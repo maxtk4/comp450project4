@@ -1,0 +1,6 @@
+---
+IndentWidth: 4
+PointerAlignmentStyle: Right
+BreakBeforeBraces: Allman
+ColumnLimit: 100
+---
