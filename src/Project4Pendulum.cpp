@@ -1,7 +1,7 @@
 ///////////////////////////////////////
 // COMP/ELEC/MECH 450/550
 // Project 4
-// Authors: Henry Prendergast
+// Authors: Henry Prendergast and Max Kuhlman
 //////////////////////////////////////
 
 #include <iostream>
