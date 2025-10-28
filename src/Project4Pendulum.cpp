@@ -150,6 +150,8 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 			auto path = pdef->getSolutionPath();
 			std::cout << "Found solution" << std::endl;
 			path->print(std::cout);
+            std::cout << "Solution as geometric path" << std::endl << std::endl;
+            ss->getSolutionPath().asGeometric().printAsMatrix(std::cout);
 		} else {
 			std::cout << "No solution found" << std::endl;
 		}
@@ -164,6 +166,8 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 			auto path = pdef->getSolutionPath();
 			std::cout << "Found solution" << std::endl;
 			path->print(std::cout);
+            std::cout << "Solution as geometric path" << std::endl << std::endl;
+            ss->getSolutionPath().asGeometric().printAsMatrix(std::cout);
 		} else {
 			std::cout << "No solution found" << std::endl;
 		}
