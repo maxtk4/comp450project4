@@ -1,7 +1,7 @@
 ///////////////////////////////////////
 // COMP/ELEC/MECH 450/550
 // Project 4
-// Authors: Henry Prendergast
+// Authors: Henry Prendergast & Max Kuhlman
 //////////////////////////////////////
 
 #include <iostream>
@@ -34,16 +34,19 @@ public:
     unsigned int getDimension() const override
     {
         // The dimension of your projection for the car
-        return 3;
+        return 4;
     }
 
-    void project(const ompl::base::State * state, Eigen::Ref<Eigen::VectorXd> projection) const override
+    void project(const ompl::base::State *state, Eigen::Ref<Eigen::VectorXd> projection) const override
     {
-        // Your projection for the car
-		auto SE2State = state->as<ompl::base::SE2StateSpace::StateType>();
-		projection(0) = SE2State->getX();
-		projection(1) = SE2State->getY();
-		projection(3) = SE2State->getYaw();
+        // Get the SE(2) state and velocity as projections
+		auto configurationState = state->as<ompl::base::SE2StateSpace::StateType>(0);
+		projection(0) = configurationState->values[0];
+		projection(1) = configurationState->values[1];
+		projection(3) = configurationState->values[2];
+
+		auto velocityState = state->as<ompl::base::RealVectorStateSpace::StateType>(1);
+		projection(4) = velocityState->values[0];
     }
 };
 
@@ -64,10 +67,10 @@ void carODE(const ompl::control::ODESolver::StateType & q, const ompl::control::
 	const double vdot = u[1];
 	
 	// The order of the elements of q and qdot depends on the base Space
-	// For the CarSpace, it's Theta, X, Y, V
-	const double theta = q[0];
-	const double x = q[1];
-	const double y = q[2];
+	// For the CarSpace, since it's an SE(2) space and then a realvectorspace(1), it's x, y, theta, v
+	const double x = q[0];
+	const double y = q[1];
+	const double theta = q[2];
 	const double v = q[3];
 	
 	std::cout << "I be ode steppin" << std::endl;
@@ -76,68 +79,104 @@ void carODE(const ompl::control::ODESolver::StateType & q, const ompl::control::
 	qdot.resize(q.size(), 0);
 	
 	// Assign the values of qdot according to our dynamical laws
-	qdot[0] = omega;
-	qdot[1] = v * cos(theta);
-	qdot[2] = v * sin(theta);
+	qdot[0] = v * cos(theta);
+	qdot[1] = v * sin(theta);
+	qdot[2] = omega;
 	qdot[3] = vdot;
 }
 
 void makeStreet(std::vector<Rectangle> & obstacles)
 {
-    // Fill in the vector of rectangles with your street environment.
+    // Fill in the vector of rectangles with the demo environment from the assignment
 	Rectangle rect;
 	
-	rect.height = 1.0;
-    rect.width = 1.0;
-    rect.x = (0.0) - 0.5*rect.width;
-    rect.y = (0.0) - 0.5*rect.height;
+	// bottom 'building'
+    rect.x = -5;
+    rect.y = -10;
+    rect.height = 4;
+    rect.width = 10;
+    obstacles.push_back(rect);
+
+    // left 'building'
+    rect.x = -5;
+    rect.y = -4;
+    rect.height = 8;
+    rect.width = 5;
+    obstacles.push_back(rect);
+
+    // right 'building'
+    rect.x = 2;
+    rect.y = -4;
+    rect.height = 8;
+    rect.width = 3;
+    obstacles.push_back(rect);
+
+    // top 'building'
+    rect.x = -5;
+    rect.y = 6;
+    rect.height = 2;
+    rect.width = 10;
     obstacles.push_back(rect);
 }
 
 bool isStateValid(const ompl::control::SpaceInformation* spaceInformation, const std::vector<Rectangle> obstacles, const ompl::base::State* state) {
-    // Perform collision checking or check if other constraints are satisfied
+    // Perform collision checking and check if other constraints are satisfied
 	std::cout << "About to check state validity" << std::endl;
 	auto compoundState = state->as<ompl::base::CompoundStateSpace::StateType>();
-	auto SO2State = compoundState->as<ompl::base::CompoundStateSpace::StateType>(0);
-	auto realState = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(1);
-    return spaceInformation->satisfiesBounds(state) && isValidPoint(realState->values[0], realState->values[1], obstacles);
+
+	// Get the SE(2) state, which contains the x, y coordinates
+	auto SE2State = compoundState->as<ompl::base::CompoundStateSpace::StateType>(0);
+	// Check bounds and point collision
+    return spaceInformation->satisfiesBounds(state) && isValidPoint(SE2State->values[0], SE2State->values[1], obstacles);
 }
 
-ompl::control::SimpleSetupPtr createCar(std::vector<Rectangle> & obstacles)
+ompl::control::SimpleSetupPtr createCar(std::vector<Rectangle> &obstacles, double vmax = 3.0, double omegamax = 3.1415927, double vdotmax = 2.0)
 {
     // Create and setup the car's state space, control space, validity checker, everything you need for planning.
-    // Create and setup the pendulum's state space, control space, validity checker, everything you need for planning.
+
     // Create a state space
-	// This state space needs to have an SO2 component for the pendulum's rotation and a real component for angular velocity
-    //auto carSpace = std::make_shared<ompl::base::SE2StateSpace>();
+	// This state space needs an SE(2) space for the x,y,theta configuration of the robot, and a RealVectorStateSpace(1) for the velocity
 	auto carSpace = std::make_shared<ompl::base::CompoundStateSpace>();
 	carSpace->setName("Car" + carSpace->getName());
-	auto thetaSpace = std::make_shared<ompl::base::SO2StateSpace>();
-	auto realSpace = std::make_shared<ompl::base::RealVectorStateSpace>(3);
-	carSpace->addSubspace(thetaSpace, 1.0);
-	carSpace->addSubspace(realSpace, 1.0);
+
+	// create the 'configuration' space, an SE(2) space
+	auto configurationSpace = std::make_shared<ompl::base::SE2StateSpace>();
+	// assign bounds to the SE(2) space
+	ob::RealVectorBounds configurationBounds(2);
+    bounds.setLow(-4.0);
+    bounds.setHigh(4.0);
+    configurationSpace->setBounds(bounds);
+
+	// create the 'velocity' space, a 1-dimensional real vector state space
+	auto velocitySpace = std::make_shared<ompl::base::RealVectorStateSpace>(1);
+	// assign bounds to the velocity space
+	ob::RealVectorBounds velocityBounds(1);
+    bounds.setLow(-1*vmax);
+    bounds.setHigh(vmax);
+    space->setBounds(bounds);
+
+	// add both spaces to the carSpace
+	carSpace->addSubspace(configurationSpace, 1.0);
+	carSpace->addSubspace(velocitySpace, 1.0);
 	
-	//auto projection = new CarProjection(carSpace);
-	//carSpace->registerDefaultProjection(ompl::base::ProjectionEvaluatorPtr(projection));
+	auto projection = new CarProjection(carSpace);
+	carSpace->registerDefaultProjection(ompl::base::ProjectionEvaluatorPtr(projection));
     // TODO: ^ this causes seg fault
-	
-    // Set the bounds for the RealVector part of the state space
-    ompl::base::RealVectorBounds realBounds(3);
-    realBounds.setLow(-10);
-    realBounds.setHigh(10);
-	carSpace->as<ompl::base::RealVectorStateSpace>(1)->setBounds(realBounds);
     
     // Create a control space
+	// The first value is omega, the second value is acceleration
     auto cspace = std::make_shared<ompl::control::RealVectorControlSpace>(carSpace, 2);
     
-    // Set the bounds for the control space -- omega and acceleration (vdot)
-    ompl::base::RealVectorBounds cBounds(2);
-    cBounds.setLow(-10);
-    cBounds.setHigh(10);
-    cspace->setBounds(cBounds);
+    // Set the bounds for the control space
+    ompl::base::RealVectorBounds controlBounds(2);
+    controlBounds.setLow(0, -1*omegamax);
+    controlBounds.setHigh(0, omegamax);
+	controlBounds.setLow(0, -1*vdotmax);
+	controlBounds.setHigh(0, vdotmax);
+    controlSpace->setBounds(controlBounds);
     
-    // Here is a SimpleSetup
-    ompl::control::SimpleSetup ss(cspace);
+    // SimpleSetup using the control space that was just defined and bounded
+    ompl::control::SimpleSetup ss(controlSpace);
     
     // Set state validity checker
 	// This is causing segmentation faults right here
@@ -151,20 +190,21 @@ ompl::control::SimpleSetupPtr createCar(std::vector<Rectangle> & obstacles)
 	
     // Set state propagator
     ss.setStatePropagator(ompl::control::ODESolver::getStatePropagator(odeSolver));
-    
+
     // Create a start state (x,y) = (-5,-5)
-    ompl::base::ScopedState<ompl::base::SE2StateSpace> start(carSpace);
-	start->as<ompl::base::SO2StateSpace::StateType>(0)->value = 0.0;  // Theta
-	start->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[0] = -5;  // X
-	start->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[1] = -5;  // Y
-	start->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[2] = 0.0;  // V
+    ompl::base::ScopedState<ompl::base::CompoundStateSpace> start(carSpace);
+	start->as<ompl::base::SE2StateSpace::StateType>(0)->values[0] = -5.0;  // x
+	start->as<ompl::base::SE2StateSpace::StateType>(0)->values[1] = -5.0;  // y
+	start->as<ompl::base::SE2StateSpace::StateType>(0)->values[2] = 0.0;  // theta
+	start->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[0] = 0.0;  // v
     
+
     // Create a goal state (x,y) = (5,5)
-	ompl::base::ScopedState<ompl::base::SE2StateSpace> goal(carSpace);
-	goal->as<ompl::base::SO2StateSpace::StateType>(0)->value = 0.0;  // Theta
-	goal->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[0] = 5;  // X
-	goal->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[1] = 5;  // Y
-	goal->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[2] = 0.0;  // V
+	ompl::base::ScopedState<ompl::base::CompoundStateSpace> goal(carSpace);
+	goal->as<ompl::base::SE2StateSpace::StateType>(0)->values[0] = 5.0;  // x
+	goal->as<ompl::base::SE2StateSpace::StateType>(0)->values[1] = 5.0;  // y
+	goal->as<ompl::base::SE2StateSpace::StateType>(0)->values[2] = 0.0;  // theta
+	goal->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[0] = 0.0;  // v
     
     // Set the start and goal states, with a goal state radius
     ss.setStartAndGoalStates(start, goal, 0.05);
@@ -178,8 +218,6 @@ ompl::control::SimpleSetupPtr createCar(std::vector<Rectangle> & obstacles)
 
 void planCar(ompl::control::SimpleSetupPtr & ss, int choice)
 {
-    // TODO: Do some motion planning for the car
-    // choice is what planner to use.
 	if (choice == 1) {
 		// RRT
 		auto planner = std::make_shared<ompl::control::RRT>(ss->getSpaceInformation());
