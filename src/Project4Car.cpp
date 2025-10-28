@@ -30,28 +30,28 @@ namespace oc = ompl::control;
 class CarProjection : public ompl::base::ProjectionEvaluator
 {
 public:
-    CarProjection(const ob::StateSpacePtr &space) : ProjectionEvaluator(space)
+    CarProjection(const ompl::base::StateSpacePtr &space) : ProjectionEvaluator(space)
     {
     }
 
     unsigned int getDimension() const override
     {
         // The dimension of your projection for the car
-        return 4;
+        return 3;
     }
 
-    void project(const ob::State *state, Eigen::Ref<Eigen::VectorXd> projection) const override
+    void project(const ompl::base::State *state, Eigen::Ref<Eigen::VectorXd> projection) const override
     {
-		auto compoundState = state->as<ompl::base::CompoundStateSpace::StateType>();
+		auto compoundState = state->as<ob::CompoundStateSpace::StateType>();
 
         // Get the SE(2) state and velocity as projections
 		auto configurationState = compoundState->as<ompl::base::SE2StateSpace::StateType>(0);
 		projection(0) = configurationState->getX();
 		projection(1) = configurationState->getY();
-		projection(3) = configurationState->getYaw();
+		projection(2) = configurationState->getYaw();
 
-		auto velocityState = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(1);
-		projection(4) = velocityState->values[0];
+		// auto velocityState = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(1);
+		// projection(4) = velocityState->values[0];
     }
 };
 
@@ -65,8 +65,7 @@ void carODE(const oc::ODESolver::StateType &q, const oc::Control *control,
 	// the ompl::control::Control can be cast as an ompl::control::RealVectorControlSpace::ControlType to expose a vector property called values
 	// std::cout << "Inside carODE" << std::endl;
 	const double *u = control->as<oc::RealVectorControlSpace::ControlType>()->values;
-	
-	std::cout << "About to access control values" << std::endl;
+
 	
 	const double omega = u[0];
 	const double vdot = u[1];
@@ -77,8 +76,6 @@ void carODE(const oc::ODESolver::StateType &q, const oc::Control *control,
 	// const double y = q[1];
 	const double theta = q[2];
 	const double v = q[3];
-	
-	std::cout << "ODE Stepping..." << std::endl;
 	
 	// Ensure that qdot is the same size as q and set all values to zero
 	qdot.resize(q.size(), 0);
@@ -96,31 +93,31 @@ void makeStreet(std::vector<Rectangle> & obstacles)
 	Rectangle rect;
 	
 	// bottom 'building'
-    rect.x = -5;
+    rect.x = -10;
     rect.y = -10;
     rect.height = 4;
-    rect.width = 10;
+    rect.width = 20;
     obstacles.push_back(rect);
 
     // left 'building'
-    rect.x = -5;
+    rect.x = -10;
     rect.y = -4;
     rect.height = 8;
-    rect.width = 5;
+    rect.width = 9;
     obstacles.push_back(rect);
 
     // right 'building'
-    rect.x = 2;
+    rect.x = 1;
     rect.y = -4;
     rect.height = 8;
-    rect.width = 3;
+    rect.width = 9;
     obstacles.push_back(rect);
 
     // top 'building'
-    rect.x = -5;
+    rect.x = -10;
     rect.y = 6;
-    rect.height = 2;
-    rect.width = 10;
+    rect.height = 4;
+    rect.width = 20;
     obstacles.push_back(rect);
 }
 
@@ -147,8 +144,8 @@ ompl::control::SimpleSetupPtr createCar(std::vector<Rectangle> &obstacles, doubl
 	auto configurationSpace = std::make_shared<ob::SE2StateSpace>();
 	// assign bounds to the SE(2) space
 	ob::RealVectorBounds configurationBounds(2);
-    configurationBounds.setLow(-4.0);
-    configurationBounds.setHigh(4.0);
+    configurationBounds.setLow(-10.0);
+    configurationBounds.setHigh(10.0);
     configurationSpace->setBounds(configurationBounds);
 
 	// create the 'velocity' space, a 1-dimensional real vector state space
@@ -212,15 +209,15 @@ ompl::control::SimpleSetupPtr createCar(std::vector<Rectangle> &obstacles, doubl
 
     // Create a start state (x,y) = (-5,-5)
     ob::ScopedState<ob::CompoundStateSpace> start(carSpace);
-	start->as<ob::SE2StateSpace::StateType>(0)->setX(-5.0);  // x
+	start->as<ob::SE2StateSpace::StateType>(0)->setX(-8.0);  // x
 	start->as<ob::SE2StateSpace::StateType>(0)->setY(-5.0);  // y
 	start->as<ob::SE2StateSpace::StateType>(0)->setYaw(0.0);  // theta
 	start->as<ob::RealVectorStateSpace::StateType>(1)->values[0] = 0.0;  // v
     
     // Create a goal state (x,y) = (5,5)
 	ob::ScopedState<ob::CompoundStateSpace> goal(carSpace);
-	goal->as<ob::SE2StateSpace::StateType>(0)->setX(5.0);  // x
-	goal->as<ob::SE2StateSpace::StateType>(0)->setX(5.0);  // y
+	goal->as<ob::SE2StateSpace::StateType>(0)->setX(8.0);  // x
+	goal->as<ob::SE2StateSpace::StateType>(0)->setY(5.0);  // y
 	goal->as<ob::SE2StateSpace::StateType>(0)->setYaw(0.0);  // theta
 	goal->as<ob::RealVectorStateSpace::StateType>(1)->values[0] = 0.0;  // v
     
