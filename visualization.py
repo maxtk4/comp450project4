@@ -1,3 +1,13 @@
+<<<<<<< HEAD
+=======
+###############
+#  Visualization Code for Project 4
+#
+#  Authors: Max Kuhlman and Henry Prendergast
+###############
+
+
+>>>>>>> 4fc0bf47aac258a2ebe1b189e53f8877b4532575
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
@@ -15,7 +25,11 @@ def plot_rectangle(ax, x, y, h, w):
     
     ax.add_patch(rect)
 
+<<<<<<< HEAD
 def plot_line(ax, x_coords, y_coords, alpha=1, cmap=3):
+=======
+def plot_line(ax, x_coords, y_coords, alpha=1, cmap=-3):
+>>>>>>> 4fc0bf47aac258a2ebe1b189e53f8877b4532575
     colors = cm.plasma(np.linspace(0, 1, 600))
 
     ax.plot(x_coords, y_coords, color=colors[int(cmap*100)+300], linestyle='--', marker='', alpha=alpha)
@@ -43,11 +57,19 @@ if __name__ == "__main__":
                 plot_line(ax, [df.iat[i, 0], df.iat[i+1, 0]], [df.iat[i, 1], df.iat[i+1, 1]])
 
             print(df.iat[0, 0])
+<<<<<<< HEAD
             ax.plot(-1*math.pi/2, 0, marker='o', color='blue', markersize=4)
             ax.text(-1*math.pi/2 + 0.2, 0.2, 'Qstart', fontsize=12, color='blue')
 
             ax.plot(math.pi/2, 0, marker='o', color='blue', markersize=4)
             ax.text(math.pi/2-0.6, -0.8, 'Qgoal', fontsize=12, color='blue')
+=======
+            ax.plot(-1*math.pi/2, 0, marker='o', color='green', markersize=4)
+            ax.text(-1*math.pi/2 + 0.2, 0.2, 'Qstart', fontsize=12, color='green')
+
+            ax.plot(math.pi/2, 0, marker='o', color='green', markersize=4)
+            ax.text(math.pi/2-0.6, -0.8, 'Qgoal', fontsize=12, color='green')
+>>>>>>> 4fc0bf47aac258a2ebe1b189e53f8877b4532575
 
             ax.set_ybound(-4.5,6.5)
             ax.set_xbound(-6,5)
