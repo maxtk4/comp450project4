@@ -269,7 +269,22 @@ void planCar(oc::SimpleSetupPtr & ss, int choice)
 		}
 	} else if (choice == 3) {
 		// RG-RRT
+		auto planner = std::make_shared<oc::RGRRT>(ss->getSpaceInformation());
+		ss->setPlanner(planner);
 		
+		std::cout << "About to attempt to solve" << std::endl;
+		ob::PlannerStatus solved = ss->solve(5.0);
+		if (solved) {
+			// Get the goal representation from the problem definition and inquire about the found path
+			auto pdef = ss->getProblemDefinition();
+			auto path = pdef->getSolutionPath();
+			std::cout << "Found solution" << std::endl;
+			path->print(std::cout);
+			std::cout << "Solution as geometric path" << std::endl << std::endl;
+            ss->getSolutionPath().asGeometric().printAsMatrix(std::cout);
+		} else {
+			std::cout << "No solution found" << std::endl;
+		}
 	} else {
 		std::cout << "Invalid choice! Please use 1 (RRT), 2 (KPIECE1), or 3 (RG-RRT)" << std::endl;
 	}
@@ -280,7 +295,7 @@ void benchmarkCar(oc::SimpleSetupPtr &/* ss */)
     // TODO: Do some benchmarking for the car
 }
 
-int main(int argc , char **argv )
+int main(int /* argc */, char ** /* argv */)
 {
     std::vector<Rectangle> obstacles;
     makeStreet(obstacles);
