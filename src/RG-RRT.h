@@ -21,7 +21,7 @@ namespace ompl
         class RGRRT : public base::Planner
         {
 		public:
-			RGRRT(const SpaceInformationPtr &si, const float reachControlTime, const int reachControlDimIdx);
+			RGRRT(const SpaceInformationPtr &si);
 			
 			~RGRRT() override;
 			
@@ -49,6 +49,26 @@ namespace ompl
 			// Set the state of addIntermediateStates_
 			void setIntermediateStates(bool addIntermediateStates) {
 				addIntermediateStates_ = addIntermediateStates;
+			}
+			
+			// Get the number of propagation steps used for reachability controls
+			int getReachControlSteps() const {
+				return reachControlSteps_;
+			}
+			
+			// Set the number of propagation steps used for reachability controls
+			void setReachControlSteps(int reachControlSteps) {
+				reachControlSteps_ = reachControlSteps;
+			}
+			
+			// Get the index of the control dimension used for reachability
+			int getReachControlDimIdx() const {
+				return reachControlDimIdx_;
+			}
+			
+			// Set the index of the control dimension used for reachability
+			void setReachControlDimIdx(int reachControlDimIdx) {
+				reachControlDimIdx_ = reachControlDimIdx;
 			}
 			
 			// Write a PlannerData object
@@ -110,10 +130,10 @@ namespace ompl
 			const SpaceInformation *siC_;
 			
 			// Duration over which that we apply controls for reachibility analysis
-			int reachControlTime_;
+			int reachControlSteps_{5};
 			
 			// Control subspace index for the reachability estimation
-			int reachControlDimIdx_;
+			int reachControlDimIdx_{0};
 			
 			// A bearest-neighbors datastructure containing the tree of Motions
 			std::shared_ptr<NearestNeighbors<Motion *>> nn_;

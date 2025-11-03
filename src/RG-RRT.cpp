@@ -22,15 +22,14 @@
 // The control space should already have bounds to the control values, so we just need to know which control to estimate reachability for
 // For this specific project, it happens to be the zeroth control subspace, but it would be nice to input that to the planner to make it more robust
 
-ompl::control::RGRRT::RGRRT(const SpaceInformationPtr &si, const float reachControlTime, const int reachControlDimIdx) : base::Planner(si, "RGRRT") {
+ompl::control::RGRRT::RGRRT(const SpaceInformationPtr &si) : base::Planner(si, "RGRRT") {
     specs_.approximateSolutions = true;
     siC_ = si.get();
-	reachControlTime_ = reachControlTime;
-	reachControlDimIdx_ = reachControlDimIdx;
 
     Planner::declareParam<double>("goal_bias", this, &RGRRT::setGoalBias, &RGRRT::getGoalBias, "0.:.05:1.");
-    Planner::declareParam<bool>("intermediate_states", this, &RGRRT::setIntermediateStates, &RGRRT::getIntermediateStates,
-                                "0,1");
+    Planner::declareParam<bool>("intermediate_states", this, &RGRRT::setIntermediateStates, &RGRRT::getIntermediateStates, "0,1");
+	Planner::declareParam<int>("reach_control_steps", this, &RGRRT::setReachControlSteps, &RGRRT::getReachControlSteps, "0:5:10");  // change this to be intelligent
+	Planner::declareParam<int>("reach_control_dim_idx", this, &RGRRT::setReachControlDimIdx, &RGRRT::getReachControlDimIdx, "0:1:2");  // change this to be intelligent
 }
 
 ompl::control::RGRRT::~RGRRT() {
@@ -241,18 +240,26 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 				
 				for (int i = 0; i < 11; i++) {
 					double controlValue = controlLow + controlDelta * i;
-					ompl::control::RealVectorControlSpace::ControlType *reachControl = siC_->allocControl()->as<ompl::control::RealVectorControlSpace::ControlType>();  // I'm a little worried about this going out of scope
+					ompl::control::RealVectorControlSpace::ControlType * reachControl = siC_->allocControl()->as<ompl::control::RealVectorControlSpace::ControlType>();  // I'm a little worried about this going out of scope
 					reachControl->values[reachControlDimIdx_] = controlValue;
 					//std::cout << "Control value: " << reachControl->values[reachControlDimIdx_]<< std::endl;
 					// The controlValues are properly spaced out--11 points, including the bounds
 					
 					// Options we have in siC_:
-					// propogate(const base::State *state, const Control *control, int steps, std::vector<base::State * > &result, bool alloc)
+					// propagate(const base::State *state, const Control *control, int steps, std::vector<base::State * > &result, bool alloc)
 					// propagateWhileValid(const base::State *state, const Control *control, int steps, base::State *result)
 					// propagateWhileValid(const base::State *state, const Control *control, int steps, std::vector<base::State * > &result, bool alloc)
 				
-					// TODO: This
+					ompl::base::State * result = si_->allocState();
+					
+					int validSteps = siC_->propagateWhileValid(motion->state, reachControl, reachControlSteps_, result);
+					
+					if (validSteps == reachControlSteps_) {
+						motion->reachable.push_back(result);
+					}
 				}
+				
+				// Now the motion has a bunch of reachable states associated with it
             }
         }
     }

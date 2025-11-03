@@ -173,7 +173,9 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 		}
 	} else if (choice == 3) {
 		// RG-RRT
-		auto planner = std::make_shared<ompl::control::RGRRT>(ss->getSpaceInformation(), 1, 0);
+		auto planner = std::make_shared<ompl::control::RGRRT>(ss->getSpaceInformation());
+		planner->setReachControlDimIdx(0);
+		planner->setReachControlSteps(5);
 		ss->setPlanner(planner);
 		
 		ompl::base::PlannerStatus solved = ss->solve(5.0);
