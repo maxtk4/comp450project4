@@ -269,7 +269,7 @@ void planCar(oc::SimpleSetupPtr & ss, int choice)
 		}
 	} else if (choice == 3) {
 		// RG-RRT
-		auto planner = std::make_shared<oc::RGRRT>(ss->getSpaceInformation());
+		auto planner = std::make_shared<oc::RGRRT>(ss->getSpaceInformation(), 1, 0);
 		ss->setPlanner(planner);
 		
 		std::cout << "About to attempt to solve" << std::endl;

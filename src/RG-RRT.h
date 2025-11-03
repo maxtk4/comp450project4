@@ -10,6 +10,8 @@
 #include <ompl/control/planners/PlannerIncludes.h>
 #include <ompl/datastructures/NearestNeighbors.h>
 
+#include <vector>
+
 namespace ompl
 {
     namespace control
@@ -19,7 +21,7 @@ namespace ompl
         class RGRRT : public base::Planner
         {
 		public:
-			RGRRT(const SpaceInformationPtr &si);
+			RGRRT(const SpaceInformationPtr &si, const float reachControlTime, const int reachControlDimIdx);
 			
 			~RGRRT() override;
 			
@@ -86,6 +88,9 @@ namespace ompl
 				
 				// The parent motion in the exploration tree
 				Motion *parent{nullptr};
+				
+				// Vector of reachable States (represented by State *)
+				std::vector<base::State*> reachable;
 			};
 			
 			// Free the memory allocated by this planner
@@ -103,6 +108,12 @@ namespace ompl
 			
 			// The base::SpaceInformation case as a control::SpaceInformation
 			const SpaceInformation *siC_;
+			
+			// Duration over which that we apply controls for reachibility analysis
+			int reachControlTime_;
+			
+			// Control subspace index for the reachability estimation
+			int reachControlDimIdx_;
 			
 			// A bearest-neighbors datastructure containing the tree of Motions
 			std::shared_ptr<NearestNeighbors<Motion *>> nn_;

@@ -9,11 +9,24 @@
 #include <ompl/tools/config/SelfConfig.h>
 #include <limits>
 
+#include <ompl/control/spaces/RealVectorControlSpace.h>
+
 // TODO: Implement RGRRT as described
 
-ompl::control::RGRRT::RGRRT(const SpaceInformationPtr &si) : base::Planner(si, "RGRRT") {
+// For pendulum:
+// Pick 11 evenly-spaced values for the control torque between the torque limits
+
+// For car:
+// Pick 11 evenly-spaced values for control u0 (omega, steering speed) (you can ignore u1 (vdot, linear acceleration))
+
+// The control space should already have bounds to the control values, so we just need to know which control to estimate reachability for
+// For this specific project, it happens to be the zeroth control subspace, but it would be nice to input that to the planner to make it more robust
+
+ompl::control::RGRRT::RGRRT(const SpaceInformationPtr &si, const float reachControlTime, const int reachControlDimIdx) : base::Planner(si, "RGRRT") {
     specs_.approximateSolutions = true;
     siC_ = si.get();
+	reachControlTime_ = reachControlTime;
+	reachControlDimIdx_ = reachControlDimIdx;
 
     Planner::declareParam<double>("goal_bias", this, &RGRRT::setGoalBias, &RGRRT::getGoalBias, "0.:.05:1.");
     Planner::declareParam<bool>("intermediate_states", this, &RGRRT::setIntermediateStates, &RGRRT::getIntermediateStates,
@@ -72,6 +85,8 @@ void ompl::control::RGRRT::getPlannerData(base::PlannerData &data) const
 
     if (lastGoalMotion_)
         data.addGoalVertex(base::PlannerDataVertex(lastGoalMotion_->state));
+	
+	// TODO: Add some representation of the reachable states that are attached to each motion
 
     for (auto m : motions)
     {
@@ -138,10 +153,11 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
         /* sample a random control that attempts to go towards the random state, and also sample a control duration */
         unsigned int cd = controlSampler_->sampleTo(rctrl, nmotion->control, nmotion->state, rmotion->state);
 
+		// If we don't care about intermediate states, we can ignore this
         if (addIntermediateStates_)
         {
             // this code is contributed by Jennifer Barry
-            std::vector<base::State *> pstates;
+            std::vector<base::State *> pstates;  // 
             cd = siC_->propagateWhileValid(nmotion->state, rctrl, cd, pstates, true);
 
             if (cd >= siC_->getMinControlDuration())
@@ -183,21 +199,24 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
                     break;
             }
             else
+				// cd is less than the minimum control duration; presumably, this control results in an invalid state
+				// This motion is no good, so I guess we'll just discard it
                 for (auto &pstate : pstates)
                     si_->freeState(pstate);
         }
+		// Continue here if we don't care about intermediate states
         else
         {
             if (cd >= siC_->getMinControlDuration())
             {
-                /* create a motion */
+                // This control creates valid movement for at least a little while; add a motion
                 auto *motion = new Motion(siC_);
                 si_->copyState(motion->state, rmotion->state);
                 siC_->copyControl(motion->control, rctrl);
                 motion->steps = cd;
                 motion->parent = nmotion;
 
-                nn_->add(motion);
+                nn_->add(motion);  // I might move this to after we add the reachable states
                 double dist = 0.0;
                 bool solv = goal->isSatisfied(motion->state, &dist);
                 if (solv)
@@ -211,6 +230,29 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
                     approxdif = dist;
                     approxsol = motion;
                 }
+				
+				// We didn't get to the goal, so now we can find some reachable states
+				// Here we are assuming that the control space is actually (or is castable to) a RealVectorControlSpace
+				ompl::control::RealVectorControlSpace * ctrlSpace = siC_->getControlSpace()->as<ompl::control::RealVectorControlSpace>();  
+				
+				ompl::base::RealVectorBounds ctrlBounds = ctrlSpace->getBounds();
+				double controlLow = ctrlBounds.low[reachControlDimIdx_];
+				double controlDelta = (ctrlBounds.high[reachControlDimIdx_] - controlLow) / 10.0;
+				
+				for (int i = 0; i < 11; i++) {
+					double controlValue = controlLow + controlDelta * i;
+					ompl::control::RealVectorControlSpace::ControlType *reachControl = siC_->allocControl()->as<ompl::control::RealVectorControlSpace::ControlType>();  // I'm a little worried about this going out of scope
+					reachControl->values[reachControlDimIdx_] = controlValue;
+					//std::cout << "Control value: " << reachControl->values[reachControlDimIdx_]<< std::endl;
+					// The controlValues are properly spaced out--11 points, including the bounds
+					
+					// Options we have in siC_:
+					// propogate(const base::State *state, const Control *control, int steps, std::vector<base::State * > &result, bool alloc)
+					// propagateWhileValid(const base::State *state, const Control *control, int steps, base::State *result)
+					// propagateWhileValid(const base::State *state, const Control *control, int steps, std::vector<base::State * > &result, bool alloc)
+				
+					// TODO: This
+				}
             }
         }
     }
