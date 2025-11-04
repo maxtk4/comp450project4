@@ -14,6 +14,8 @@
 #include <ompl/control/spaces/RealVectorControlSpace.h>
 #include <ompl/base/spaces/SO2StateSpace.h>
 
+#include <ompl/tools/benchmark/Benchmark.h>
+
 #include <ompl/control/planners/rrt/RRT.h>
 #include <ompl/control/planners/kpiece/KPIECE1.h>
 
@@ -292,9 +294,41 @@ void planCar(oc::SimpleSetupPtr & ss, int choice)
 	}
 }
 
-void benchmarkCar(oc::SimpleSetupPtr &/* ss */)
+void benchmarkCar(oc::SimpleSetupPtr & ss)
 {
-    // TODO: Do some benchmarking for the car
+    // Do some benchmarking for the car
+	
+	// Create a Benchmark w/ an experiment named "Car"
+	ompl::tools::Benchmark benchmark = ompl::tools::Benchmark(*ss, "Car");
+	
+	// Create & add a RRT Planner
+	auto rrt = std::make_shared<ompl::control::RRT>(ss->getSpaceInformation());
+	benchmark.addPlanner(rrt);
+
+	// Create & add a KPIECE Planner
+	auto kpiece = std::make_shared<ompl::control::KPIECE1>(ss->getSpaceInformation());
+	benchmark.addPlanner(kpiece);
+
+	// Create & add a RG-RRT Planner
+	auto rgrrt = std::make_shared<ompl::control::RGRRT>(ss->getSpaceInformation());
+	rgrrt->setReachControlDimIdx(0);
+	rgrrt->setReachControlSteps(5);
+	benchmark.addPlanner(rgrrt);
+	
+	// Create a Request
+	// Request (double maxTime=5.0, double maxMem=4096.0, 
+	// unsigned int runCount=100, double timeBetweenUpdates=0.05, 
+	// bool displayProgress=true, bool saveConsoleOutput=true, 
+	// bool simplify=true)
+	ompl::tools::Benchmark::Request req = ompl::tools::Benchmark::Request(5.0, 4096.0, 20, 0.05, true, true, false);
+	
+	// Run the Benchmark's benchmark method
+	benchmark.benchmark(req);
+	
+	// Save the benchmark results to a file with saveResultsToFile()
+	benchmark.saveResultsToFile();
+	
+	std::cout << "Benchmarking is all done!" << std::endl;
 }
 
 int main(int /* argc */, char ** /* argv */)
