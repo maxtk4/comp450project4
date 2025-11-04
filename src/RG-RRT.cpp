@@ -41,7 +41,11 @@ void ompl::control::RGRRT::setup()
     base::Planner::setup();
     if (!nn_)
         nn_.reset(tools::SelfConfig::getDefaultNearestNeighbors<Motion *>(this));
+    if (!rn_) // TESTING
+        rn_.reset(tools::SelfConfig::getDefaultNearestNeighbors<Motion *>(this)); // TESTING
     nn_->setDistanceFunction([this](const Motion *a, const Motion *b) { return distanceFunction(a, b); });
+
+    rn_->setDistanceFunction([this](const Motion *a, const Motion *b) { return distanceFunction(a, b); }); // TESTING
 }
 
 void ompl::control::RGRRT::clear()
@@ -52,6 +56,8 @@ void ompl::control::RGRRT::clear()
     freeMemory();
     if (nn_)
         nn_->clear();
+    if (rn_)
+        rn_->clear();
     lastGoalMotion_ = nullptr;
 }
 
@@ -61,6 +67,19 @@ void ompl::control::RGRRT::freeMemory()
     {
         std::vector<Motion *> motions;
         nn_->list(motions);
+        for (auto &motion : motions)
+        {
+            if (motion->state)
+                si_->freeState(motion->state);
+            if (motion->control)
+                siC_->freeControl(motion->control);
+            delete motion;
+        }
+    }
+    if (rn_)
+    {
+        std::vector<Motion *> motions;
+        rn_->list(motions);
         for (auto &motion : motions)
         {
             if (motion->state)
@@ -102,6 +121,47 @@ void ompl::control::RGRRT::getPlannerData(base::PlannerData &data) const
     }
 }
 
+void ompl::control::RGRRT::addReachableStates(Motion *motion)
+{
+    // Here we are assuming that the control space is actually (or is castable to) a RealVectorControlSpace
+    ompl::control::RealVectorControlSpace * ctrlSpace = siC_->getControlSpace()->as<ompl::control::RealVectorControlSpace>();  
+    
+    ompl::base::RealVectorBounds ctrlBounds = ctrlSpace->getBounds();
+    double controlLow = ctrlBounds.low[reachControlDimIdx_];
+    double controlDelta = (ctrlBounds.high[reachControlDimIdx_] - controlLow) / 10.0;
+    
+    for (int i = 0; i < 11; i++) {
+        double controlValue = controlLow + controlDelta * i;
+        ompl::control::RealVectorControlSpace::ControlType * reachControl = siC_->allocControl()->as<ompl::control::RealVectorControlSpace::ControlType>();  // I'm a little worried about this going out of scope
+        reachControl->values[reachControlDimIdx_] = controlValue;
+        // std::cout << "Control value: " << reachControl->values[reachControlDimIdx_]<< std::endl;
+        // The controlValues are properly spaced out--11 points, including the bounds
+        
+        // Options we have in siC_:
+        // propagate(const base::State *state, const Control *control, int steps, std::vector<base::State * > &result, bool alloc)
+        // propagateWhileValid(const base::State *state, const Control *control, int steps, base::State *result)
+        // propagateWhileValid(const base::State *state, const Control *control, int steps, std::vector<base::State * > &result, bool alloc)
+    
+        ompl::base::State * result = si_->allocState();
+        
+        // This should propagate each of the evenly sampled control to add a point to the array of reachable points
+        // What does this do about the velocity of the car?
+        int validSteps = siC_->propagateWhileValid(motion->state, reachControl, reachControlSteps_, result);
+        
+        if (validSteps == reachControlSteps_) {
+            // if the propagation was successful, add to the nmotion object
+            // motion->reachable.push_back(result);
+            auto *new_motion = new Motion(siC_);
+            si_->copyState(new_motion->state, result);
+            siC_->copyControl(new_motion->control, reachControl);
+            new_motion->steps = reachControlSteps_;
+            new_motion->parent = motion;
+
+            rn_->add(new_motion);
+        }
+    }
+}
+
 ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTerminationCondition &ptc)
 {
     checkValidity();
@@ -114,6 +174,8 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
         si_->copyState(motion->state, st);
         siC_->nullControl(motion->control);
         nn_->add(motion);
+
+        addReachableStates(motion);
     }
 
     if (nn_->size() == 0)
@@ -146,39 +208,106 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
         else
             sampler_->sampleUniform(rstate);
 
-        /* find closest state in the tree */
+        /* Find the closest state in the tree, and find the closest "reachable" state from this nearest state
+         * 
+         * If the closest reachable state is closer than the state in nn_, then we can expand the tree using the reachable state's parent
+         * 
+         * OG RRT did: Motion *nmotion = nn_->nearest(rmotion);
+         */
+
         Motion *nmotion = nn_->nearest(rmotion);
 
-        /* sample a random control that attempts to go towards the random state, and also sample a control duration */
-        unsigned int cd = controlSampler_->sampleTo(rctrl, nmotion->control, nmotion->state, rmotion->state);
+        Motion *reachable_motion = rn_->nearest(rmotion);
 
-		// If we don't care about intermediate states, we can ignore this
-        if (addIntermediateStates_)
-        {
-            // this code is contributed by Jennifer Barry
-            std::vector<base::State *> pstates;  // 
-            cd = siC_->propagateWhileValid(nmotion->state, rctrl, cd, pstates, true);
+        auto reachable_dist = si_->distance(reachable_motion->state, rmotion->state);
+        auto nearest_dist = si_->distance(nmotion->state, rmotion->state);
 
-            if (cd >= siC_->getMinControlDuration())
+        // std::cout << "Reachable Distance: " << reachable_dist << "Nearest Distance: " << nearest_dist << std::endl;
+
+        // // check if there is a reachable state which is closer than the nearest neighbor state
+        // bool valid_extension = false;
+        // for (base::State* reachable_state : nmotion->reachable)
+        // {
+        //     if (si_->distance(reachable_state, rmotion->state) < si_->distance(nmotion->state, rmotion->state)) {
+        //         valid_extension = true;
+        //         break;
+        //     }
+        // }
+
+        // If the point is valid for extension, then do the control sampling process, otherwise just continue to the next
+        // loop iteration
+        //if (valid_extension) {
+        if (reachable_dist < nearest_dist) {
+            /* Sample a random control that attempts to go towards the random state, and also sample a control duration */
+            unsigned int cd = controlSampler_->sampleTo(rctrl, nmotion->control, nmotion->state, rmotion->state);
+
+            // If we don't care about intermediate states, we can ignore this
+            if (addIntermediateStates_)
             {
-                Motion *lastmotion = nmotion;
-                bool solved = false;
-                size_t p = 0;
-                for (; p < pstates.size(); ++p)
+                // this code is contributed by Jennifer Barry
+                std::vector<base::State *> pstates;  // 
+                cd = siC_->propagateWhileValid(nmotion->state, rctrl, cd, pstates, true);
+
+                if (cd >= siC_->getMinControlDuration())
                 {
-                    /* create a motion */
-                    auto *motion = new Motion();
-                    motion->state = pstates[p];
-                    // we need multiple copies of rctrl
-                    motion->control = siC_->allocControl();
+                    Motion *lastmotion = nmotion;
+                    bool solved = false;
+                    size_t p = 0;
+                    for (; p < pstates.size(); ++p)
+                    {
+                        /* create a motion */
+                        auto *motion = new Motion();
+                        motion->state = pstates[p];
+                        // we need multiple copies of rctrl
+                        motion->control = siC_->allocControl();
+                        siC_->copyControl(motion->control, rctrl);
+                        motion->steps = 1;
+                        motion->parent = lastmotion;
+                        lastmotion = motion;
+                        nn_->add(motion);
+                        double dist = 0.0;
+                        solved = goal->isSatisfied(motion->state, &dist);
+                        if (solved)
+                        {
+                            approxdif = dist;
+                            solution = motion;
+                            break;
+                        }
+                        if (dist < approxdif)
+                        {
+                            approxdif = dist;
+                            approxsol = motion;
+                        }
+                    }
+
+                    // free any states after we hit the goal
+                    while (++p < pstates.size())
+                        si_->freeState(pstates[p]);
+                    if (solved)
+                        break;
+                }
+                else
+                    // cd is less than the minimum control duration; presumably, this control results in an invalid state
+                    // This motion is no good, so I guess we'll just discard it
+                    for (auto &pstate : pstates)
+                        si_->freeState(pstate);
+            }
+            // Continue here if we don't care about intermediate states
+            else
+            {
+                if (cd >= siC_->getMinControlDuration())
+                {
+                    // This control creates valid movement for at least a little while; add a motion
+                    auto *motion = new Motion(siC_);
+                    si_->copyState(motion->state, rmotion->state);
                     siC_->copyControl(motion->control, rctrl);
-                    motion->steps = 1;
-                    motion->parent = lastmotion;
-                    lastmotion = motion;
+                    motion->steps = cd;
+                    motion->parent = nmotion;
+
                     nn_->add(motion);
                     double dist = 0.0;
-                    solved = goal->isSatisfied(motion->state, &dist);
-                    if (solved)
+                    bool solv = goal->isSatisfied(motion->state, &dist);
+                    if (solv)
                     {
                         approxdif = dist;
                         solution = motion;
@@ -189,77 +318,10 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
                         approxdif = dist;
                         approxsol = motion;
                     }
+                    
+                    // We didn't get to the goal, so now we can find some reachable states
+                    addReachableStates(motion);
                 }
-
-                // free any states after we hit the goal
-                while (++p < pstates.size())
-                    si_->freeState(pstates[p]);
-                if (solved)
-                    break;
-            }
-            else
-				// cd is less than the minimum control duration; presumably, this control results in an invalid state
-				// This motion is no good, so I guess we'll just discard it
-                for (auto &pstate : pstates)
-                    si_->freeState(pstate);
-        }
-		// Continue here if we don't care about intermediate states
-        else
-        {
-            if (cd >= siC_->getMinControlDuration())
-            {
-                // This control creates valid movement for at least a little while; add a motion
-                auto *motion = new Motion(siC_);
-                si_->copyState(motion->state, rmotion->state);
-                siC_->copyControl(motion->control, rctrl);
-                motion->steps = cd;
-                motion->parent = nmotion;
-
-                nn_->add(motion);  // I might move this to after we add the reachable states
-                double dist = 0.0;
-                bool solv = goal->isSatisfied(motion->state, &dist);
-                if (solv)
-                {
-                    approxdif = dist;
-                    solution = motion;
-                    break;
-                }
-                if (dist < approxdif)
-                {
-                    approxdif = dist;
-                    approxsol = motion;
-                }
-				
-				// We didn't get to the goal, so now we can find some reachable states
-				// Here we are assuming that the control space is actually (or is castable to) a RealVectorControlSpace
-				ompl::control::RealVectorControlSpace * ctrlSpace = siC_->getControlSpace()->as<ompl::control::RealVectorControlSpace>();  
-				
-				ompl::base::RealVectorBounds ctrlBounds = ctrlSpace->getBounds();
-				double controlLow = ctrlBounds.low[reachControlDimIdx_];
-				double controlDelta = (ctrlBounds.high[reachControlDimIdx_] - controlLow) / 10.0;
-				
-				for (int i = 0; i < 11; i++) {
-					double controlValue = controlLow + controlDelta * i;
-					ompl::control::RealVectorControlSpace::ControlType * reachControl = siC_->allocControl()->as<ompl::control::RealVectorControlSpace::ControlType>();  // I'm a little worried about this going out of scope
-					reachControl->values[reachControlDimIdx_] = controlValue;
-					//std::cout << "Control value: " << reachControl->values[reachControlDimIdx_]<< std::endl;
-					// The controlValues are properly spaced out--11 points, including the bounds
-					
-					// Options we have in siC_:
-					// propagate(const base::State *state, const Control *control, int steps, std::vector<base::State * > &result, bool alloc)
-					// propagateWhileValid(const base::State *state, const Control *control, int steps, base::State *result)
-					// propagateWhileValid(const base::State *state, const Control *control, int steps, std::vector<base::State * > &result, bool alloc)
-				
-					ompl::base::State * result = si_->allocState();
-					
-					int validSteps = siC_->propagateWhileValid(motion->state, reachControl, reachControlSteps_, result);
-					
-					if (validSteps == reachControlSteps_) {
-						motion->reachable.push_back(result);
-					}
-				}
-				
-				// Now the motion has a bunch of reachable states associated with it
             }
         }
     }

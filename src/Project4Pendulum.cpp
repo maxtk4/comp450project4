@@ -129,7 +129,7 @@ ompl::control::SimpleSetupPtr createPendulum(double torque) {
     // Set the start and goal states, with a goal state radius
     ss.setStartAndGoalStates(start, goal, 0.05);
     
-    // Set propagation step size and control duration limits so it stops yelling at me
+    // Set propagation step size and control duration limits
     si->setPropagationStepSize(0.1);
 	si->setMinMaxControlDuration(1, 10);
 	
@@ -145,7 +145,7 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 		auto planner = std::make_shared<ompl::control::RRT>(ss->getSpaceInformation());
 		ss->setPlanner(planner);
 		
-		ompl::base::PlannerStatus solved = ss->solve(5.0);
+		ompl::base::PlannerStatus solved = ss->solve(30.0);
 		if (solved) {
 			// Get the goal representation from the problem definition and inquire about the found path
 			auto pdef = ss->getProblemDefinition();
@@ -161,7 +161,7 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 		// KPIECE1
 		auto planner = std::make_shared<ompl::control::KPIECE1>(ss->getSpaceInformation());
 		ss->setPlanner(planner);
-		ompl::base::PlannerStatus solved = ss->solve(5.0);
+		ompl::base::PlannerStatus solved = ss->solve(30.0);
 		if (solved) {
 			// Get the goal representation from the problem definition and inquire about the found path
 			auto pdef = ss->getProblemDefinition();
@@ -177,10 +177,10 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 		// RG-RRT
 		auto planner = std::make_shared<ompl::control::RGRRT>(ss->getSpaceInformation());
 		planner->setReachControlDimIdx(0);
-		planner->setReachControlSteps(5);
+		planner->setReachControlSteps(10);
 		ss->setPlanner(planner);
 		
-		ompl::base::PlannerStatus solved = ss->solve(5.0);
+		ompl::base::PlannerStatus solved = ss->solve(60.0);
 		if (solved) {
 			// Get the goal representation from the problem definition and inquire about the found path
 			auto pdef = ss->getProblemDefinition();
@@ -222,7 +222,7 @@ void benchmarkPendulum(ompl::control::SimpleSetupPtr & ss) {
 	// unsigned int runCount=100, double timeBetweenUpdates=0.05, 
 	// bool displayProgress=true, bool saveConsoleOutput=true, 
 	// bool simplify=true)
-	ompl::tools::Benchmark::Request req = ompl::tools::Benchmark::Request(5.0, 4096.0, 20, 0.05, true, true, false);
+	ompl::tools::Benchmark::Request req = ompl::tools::Benchmark::Request(30.0, 4096.0, 20, 0.05, true, true, false);
 	
 	// Run the Benchmark's benchmark method
 	benchmark.benchmark(req);

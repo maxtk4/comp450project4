@@ -191,7 +191,6 @@ ompl::control::SimpleSetupPtr createCar(std::vector<Rectangle> &obstacles, doubl
     oc::SimpleSetup ss(controlSpace);
     
     // Set state validity checker
-	// This is causing segmentation faults right here
     ss.setStateValidityChecker([ss, obstacles](const ob::State* state) {
         return isStateValid(ss.getSpaceInformation().get(), obstacles, state);
     });
@@ -273,7 +272,7 @@ void planCar(oc::SimpleSetupPtr & ss, int choice)
 		// RG-RRT
 		auto planner = std::make_shared<ompl::control::RGRRT>(ss->getSpaceInformation());
 		planner->setReachControlDimIdx(0);
-		planner->setReachControlSteps(5);
+		planner->setReachControlSteps(20);
 		ss->setPlanner(planner);
 		
 		std::cout << "About to attempt to solve" << std::endl;
@@ -320,7 +319,7 @@ void benchmarkCar(oc::SimpleSetupPtr & ss)
 	// unsigned int runCount=100, double timeBetweenUpdates=0.05, 
 	// bool displayProgress=true, bool saveConsoleOutput=true, 
 	// bool simplify=true)
-	ompl::tools::Benchmark::Request req = ompl::tools::Benchmark::Request(5.0, 4096.0, 20, 0.05, true, true, false);
+	ompl::tools::Benchmark::Request req = ompl::tools::Benchmark::Request(30.0, 4096.0, 20, 0.05, true, true, false);
 	
 	// Run the Benchmark's benchmark method
 	benchmark.benchmark(req);

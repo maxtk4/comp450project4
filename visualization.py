@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 ###############
 #  Visualization Code for Project 4
 #
@@ -7,7 +5,6 @@
 ###############
 
 
->>>>>>> 4fc0bf47aac258a2ebe1b189e53f8877b4532575
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
@@ -25,14 +22,14 @@ def plot_rectangle(ax, x, y, h, w):
     
     ax.add_patch(rect)
 
-<<<<<<< HEAD
-def plot_line(ax, x_coords, y_coords, alpha=1, cmap=3):
-=======
-def plot_line(ax, x_coords, y_coords, alpha=1, cmap=-3):
->>>>>>> 4fc0bf47aac258a2ebe1b189e53f8877b4532575
-    colors = cm.plasma(np.linspace(0, 1, 600))
+# def plot_line(ax, x_coords, y_coords, alpha=1, cmap=-3):
+#     colors = cm.plasma(np.linspace(0, 1, 600))
 
-    ax.plot(x_coords, y_coords, color=colors[int(cmap*100)+300], linestyle='--', marker='', alpha=alpha)
+#     ax.plot(x_coords, y_coords, color=colors[int(cmap*100)+300], linestyle='--', marker='', alpha=alpha)
+
+def plot_line(ax, x_coords, y_coords, color='r'):
+
+    return ax.plot(x_coords, y_coords, color=color, linestyle='-', marker='', alpha=0.6)
            
 
 if __name__ == "__main__":
@@ -40,46 +37,46 @@ if __name__ == "__main__":
     print("Test case visualizer for Project 4 Exercises 1 & 2\n...")
 
     if len(sys.argv) == 3:
-        print(f"Visualizing {'pendulum' if sys.argv[2] == '0' else 'car'} geometric solution path\n...")
-        print(f"Reading data from file: {sys.argv[1]}")
+        # print(f"Reading data from file: {sys.argv[1]}")
 
         fig = plt.figure() # Creates an empty Figure
         ax = fig.add_subplot(111) # Adds a single Axes to the Figure (1 row, 1 column, first subplot)
-        ax.set_aspect('equal', adjustable='box') 
+        # ax.set_aspect('equal', adjustable='box') 
 
-        df = pd.read_csv(sys.argv[1], delimiter=' ', header=None)
+        df_1 = pd.read_csv("./pendulumPathRGRRT_3.txt", delimiter=' ', header=None)
+        df_2 = pd.read_csv("./pendulumPathRGRRT_5.txt", delimiter=' ', header=None)
+        df_3 = pd.read_csv("./pendulumPathRGRRT_10.txt", delimiter=' ', header=None)
 
 
-        ax.set_title(f"Solution Path for {'Pendulum' if sys.argv[2] == '0' else 'Car'} System")
+        ax.set_title(f"Pendulum Paths across Different Torques with RG-RRT Planner")
         if sys.argv[2] == '0':
-            # get pairs of coordinates and plot the line between them
-            for i in range(len(df)-1):
-                plot_line(ax, [df.iat[i, 0], df.iat[i+1, 0]], [df.iat[i, 1], df.iat[i+1, 1]])
+            # # get pairs of coordinates and plot the line between them
+            for i in range(len(df_1)-1):
+                line1, = plot_line(ax, [df_1.iat[i, 0], df_1.iat[i+1, 0]], [df_1.iat[i, 1], df_1.iat[i+1, 1]], color='r')
 
-            print(df.iat[0, 0])
-<<<<<<< HEAD
-            ax.plot(-1*math.pi/2, 0, marker='o', color='blue', markersize=4)
-            ax.text(-1*math.pi/2 + 0.2, 0.2, 'Qstart', fontsize=12, color='blue')
+            for i in range(len(df_2)-1):
+                line2, = plot_line(ax, [df_2.iat[i, 0], df_2.iat[i+1, 0]], [df_2.iat[i, 1], df_2.iat[i+1, 1]], color='g')
 
-            ax.plot(math.pi/2, 0, marker='o', color='blue', markersize=4)
-            ax.text(math.pi/2-0.6, -0.8, 'Qgoal', fontsize=12, color='blue')
-=======
-            ax.plot(-1*math.pi/2, 0, marker='o', color='green', markersize=4)
-            ax.text(-1*math.pi/2 + 0.2, 0.2, 'Qstart', fontsize=12, color='green')
+            for i in range(len(df_3)-1):
+                line3, = plot_line(ax, [df_3.iat[i, 0], df_3.iat[i+1, 0]], [df_3.iat[i, 1], df_3.iat[i+1, 1]], color='b')
 
-            ax.plot(math.pi/2, 0, marker='o', color='green', markersize=4)
-            ax.text(math.pi/2-0.6, -0.8, 'Qgoal', fontsize=12, color='green')
->>>>>>> 4fc0bf47aac258a2ebe1b189e53f8877b4532575
+            ax.plot(-1*math.pi/2, 0, marker='o', color='black', markersize=4)
+            ax.text(-1*math.pi/2 + 0.2, 0.2, 'Qstart', fontsize=12, color='black')
 
-            ax.set_ybound(-4.5,6.5)
-            ax.set_xbound(-6,5)
+            ax.plot(math.pi/2, 0, marker='o', color='black', markersize=4)
+            ax.text(math.pi/2-0.6, -0.8, 'Qgoal', fontsize=12, color='black')
+
+            ax.set_ybound(-6,9)
+            ax.set_xbound(-4,4)
+
+            ax.legend([line1, line2, line3], ['Torque = 3', 'Torque = 5', 'Torque = 10'])
 
             ax.set_xlabel("Theta")
             ax.set_ylabel("Omega")
         if sys.argv[2] == '1':
             # get pairs of coordinates and plot the line between them
-            for i in range(len(df)-1):
-                plot_line(ax, [df.iat[i, 0], df.iat[i+1, 0]], [df.iat[i, 1], df.iat[i+1, 1]], cmap=df.iat[i, 3])
+            for i in range(len(df_1)-1):
+                plot_line(ax, [df_1.iat[i, 0], df_1.iat[i+1, 0]], [df_1.iat[i, 1], df_1.iat[i+1, 1]], cmap=df_1.iat[i, 3])
 
             fig.colorbar(cm.ScalarMappable(norm=Normalize(vmin=-3, vmax=3), cmap=cm.plasma), ax=ax)
 

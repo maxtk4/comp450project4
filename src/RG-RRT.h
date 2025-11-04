@@ -74,14 +74,17 @@ namespace ompl
 			// Write a PlannerData object
 			void getPlannerData(base::PlannerData &data) const override;
 			
-			// Set a different nearest neighbors datastructure
+			// Template for creating nearest neighbors datastructures
 			template <template <typename T> class NN>
+
+			// Set different nearest neighbors datastructure
 			void setNearestNeighbors() {
 				if (nn_ && nn_->size() != 0) {
 					OMPL_WARN("Calling setNearestNeighbors will clear all states!");  // This seems like a ! sort of warning
 				}
 				clear();
 				nn_ = std::make_shared<NN<Motion *>>();
+				rn_ = std::make_shared<NN<Motion *>>(); // TESTING
 				setup();
 			}
 			
@@ -115,6 +118,9 @@ namespace ompl
 			
 			// Free the memory allocated by this planner
 			void freeMemory();
+
+			// Add reachable states to a motion
+			void addReachableStates(Motion *nmotion);
 			
 			double distanceFunction(const Motion *a, const Motion *b) const {
 				return si_->distance(a->state, b->state);
@@ -135,8 +141,10 @@ namespace ompl
 			// Control subspace index for the reachability estimation
 			int reachControlDimIdx_{0};
 			
-			// A bearest-neighbors datastructure containing the tree of Motions
+			// A nearest-neighbors datastructure containing the tree of Motions
 			std::shared_ptr<NearestNeighbors<Motion *>> nn_;
+			// A nearest-neighbors datastructure containing the tree of reachable motions
+			std::shared_ptr<NearestNeighbors<Motion *>> rn_; // TESTING
 			
 			// The fraction of the time the goal is picked as the state to expand towards
 			double goalBias_{0.05};
