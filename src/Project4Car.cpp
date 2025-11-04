@@ -223,7 +223,7 @@ ompl::control::SimpleSetupPtr createCar(std::vector<Rectangle> &obstacles, doubl
 	goal->as<ob::RealVectorStateSpace::StateType>(1)->values[0] = 0.0;  // v
     
     // Set the start and goal states, with a goal state radius
-    ss.setStartAndGoalStates(start, goal, 0.05);
+    ss.setStartAndGoalStates(start, goal, 0.1);
     
     // Set propagation step size and control duration limits so it stops yelling at me
     si->setPropagationStepSize(0.1);

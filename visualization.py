@@ -22,14 +22,14 @@ def plot_rectangle(ax, x, y, h, w):
     
     ax.add_patch(rect)
 
-# def plot_line(ax, x_coords, y_coords, alpha=1, cmap=-3):
-#     colors = cm.plasma(np.linspace(0, 1, 600))
+def plot_line(ax, x_coords, y_coords, alpha=1, cmap=-3):
+    colors = cm.plasma(np.linspace(0, 1, 600))
 
-#     ax.plot(x_coords, y_coords, color=colors[int(cmap*100)+300], linestyle='--', marker='', alpha=alpha)
+    ax.plot(x_coords, y_coords, color=colors[int(cmap*100)+300], linestyle='--', marker='', alpha=alpha)
 
-def plot_line(ax, x_coords, y_coords, color='r'):
+# def plot_line(ax, x_coords, y_coords, color='r'):
 
-    return ax.plot(x_coords, y_coords, color=color, linestyle='-', marker='', alpha=0.6)
+#     return ax.plot(x_coords, y_coords, color=color, linestyle='-', marker='', alpha=0.6)
            
 
 if __name__ == "__main__":
@@ -43,9 +43,9 @@ if __name__ == "__main__":
         ax = fig.add_subplot(111) # Adds a single Axes to the Figure (1 row, 1 column, first subplot)
         # ax.set_aspect('equal', adjustable='box') 
 
-        df_1 = pd.read_csv("./pendulumPathRGRRT_3.txt", delimiter=' ', header=None)
-        df_2 = pd.read_csv("./pendulumPathRGRRT_5.txt", delimiter=' ', header=None)
-        df_3 = pd.read_csv("./pendulumPathRGRRT_10.txt", delimiter=' ', header=None)
+        df_1 = pd.read_csv("./carPathRRT.txt", delimiter=' ', header=None)
+        # df_2 = pd.read_csv("./pendulumPathRGRRT_5.txt", delimiter=' ', header=None)
+        # df_3 = pd.read_csv("./pendulumPathRGRRT_10.txt", delimiter=' ', header=None)
 
 
         ax.set_title(f"Pendulum Paths across Different Torques with RG-RRT Planner")
@@ -54,11 +54,11 @@ if __name__ == "__main__":
             for i in range(len(df_1)-1):
                 line1, = plot_line(ax, [df_1.iat[i, 0], df_1.iat[i+1, 0]], [df_1.iat[i, 1], df_1.iat[i+1, 1]], color='r')
 
-            for i in range(len(df_2)-1):
-                line2, = plot_line(ax, [df_2.iat[i, 0], df_2.iat[i+1, 0]], [df_2.iat[i, 1], df_2.iat[i+1, 1]], color='g')
+            # for i in range(len(df_2)-1):
+            #     line2, = plot_line(ax, [df_2.iat[i, 0], df_2.iat[i+1, 0]], [df_2.iat[i, 1], df_2.iat[i+1, 1]], color='g')
 
-            for i in range(len(df_3)-1):
-                line3, = plot_line(ax, [df_3.iat[i, 0], df_3.iat[i+1, 0]], [df_3.iat[i, 1], df_3.iat[i+1, 1]], color='b')
+            # for i in range(len(df_3)-1):
+            #     line3, = plot_line(ax, [df_3.iat[i, 0], df_3.iat[i+1, 0]], [df_3.iat[i, 1], df_3.iat[i+1, 1]], color='b')
 
             ax.plot(-1*math.pi/2, 0, marker='o', color='black', markersize=4)
             ax.text(-1*math.pi/2 + 0.2, 0.2, 'Qstart', fontsize=12, color='black')
@@ -69,7 +69,7 @@ if __name__ == "__main__":
             ax.set_ybound(-6,9)
             ax.set_xbound(-4,4)
 
-            ax.legend([line1, line2, line3], ['Torque = 3', 'Torque = 5', 'Torque = 10'])
+            # ax.legend([line1, line2, line3], ['Torque = 3', 'Torque = 5', 'Torque = 10'])
 
             ax.set_xlabel("Theta")
             ax.set_ylabel("Omega")
