@@ -145,7 +145,7 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 		auto planner = std::make_shared<ompl::control::RRT>(ss->getSpaceInformation());
 		ss->setPlanner(planner);
 		
-		ompl::base::PlannerStatus solved = ss->solve(30.0);
+		ompl::base::PlannerStatus solved = ss->solve(3.0);
 		if (solved) {
 			// Get the goal representation from the problem definition and inquire about the found path
 			auto pdef = ss->getProblemDefinition();
@@ -161,7 +161,7 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 		// KPIECE1
 		auto planner = std::make_shared<ompl::control::KPIECE1>(ss->getSpaceInformation());
 		ss->setPlanner(planner);
-		ompl::base::PlannerStatus solved = ss->solve(30.0);
+		ompl::base::PlannerStatus solved = ss->solve(3.0);
 		if (solved) {
 			// Get the goal representation from the problem definition and inquire about the found path
 			auto pdef = ss->getProblemDefinition();
@@ -177,7 +177,7 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 		// RG-RRT
 		auto planner = std::make_shared<ompl::control::RGRRT>(ss->getSpaceInformation());
 		planner->setReachControlDimIdx(0);
-		planner->setReachControlSteps(10);
+		planner->setReachControlSteps(3);
 		ss->setPlanner(planner);
 		
 		ompl::base::PlannerStatus solved = ss->solve(60.0);

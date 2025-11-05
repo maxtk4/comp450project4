@@ -131,6 +131,7 @@ bool isStateValid(const oc::SpaceInformation* spaceInformation, const std::vecto
 	auto SE2State = compoundState->as<ob::SE2StateSpace::StateType>(0);
 	// Check bounds and point collision
     return spaceInformation->satisfiesBounds(state) && isValidPoint(SE2State->getX(), SE2State->getY(), obstacles);
+	//return spaceInformation->satisfiesBounds(state) && isValidSquare(SE2State->getX(), SE2State->getY(), SE2State->getYaw(), 0.25, obstacles);
 }
 
 ompl::control::SimpleSetupPtr createCar(std::vector<Rectangle> &obstacles, double vmax = 3.0, double omegamax = 3.1415927, double vdotmax = 2.0)
@@ -240,7 +241,7 @@ void planCar(oc::SimpleSetupPtr & ss, int choice)
 		ss->setPlanner(planner);
 		
 		std::cout << "About to attempt to solve" << std::endl;
-		ob::PlannerStatus solved = ss->solve(5.0);
+		ob::PlannerStatus solved = ss->solve(60.0);
 		if (solved) {
 			// Get the goal representation from the problem definition and inquire about the found path
 			auto pdef = ss->getProblemDefinition();
@@ -256,7 +257,7 @@ void planCar(oc::SimpleSetupPtr & ss, int choice)
 		// KPIECE1
 		auto planner = std::make_shared<oc::KPIECE1>(ss->getSpaceInformation());
 		ss->setPlanner(planner);
-		ompl::base::PlannerStatus solved = ss->solve(5.0);
+		ompl::base::PlannerStatus solved = ss->solve(60.0);
 		if (solved) {
 			// Get the goal representation from the problem definition and inquire about the found path
 			auto pdef = ss->getProblemDefinition();
@@ -276,7 +277,7 @@ void planCar(oc::SimpleSetupPtr & ss, int choice)
 		ss->setPlanner(planner);
 		
 		std::cout << "About to attempt to solve" << std::endl;
-		ob::PlannerStatus solved = ss->solve(5.0);
+		ob::PlannerStatus solved = ss->solve(60.0);
 		if (solved) {
 			// Get the goal representation from the problem definition and inquire about the found path
 			auto pdef = ss->getProblemDefinition();

@@ -43,12 +43,12 @@ if __name__ == "__main__":
         ax = fig.add_subplot(111) # Adds a single Axes to the Figure (1 row, 1 column, first subplot)
         # ax.set_aspect('equal', adjustable='box') 
 
-        df_1 = pd.read_csv("./carPathRRT.txt", delimiter=' ', header=None)
+        df_1 = pd.read_csv(sys.argv[1], delimiter=' ', header=None)
         # df_2 = pd.read_csv("./pendulumPathRGRRT_5.txt", delimiter=' ', header=None)
         # df_3 = pd.read_csv("./pendulumPathRGRRT_10.txt", delimiter=' ', header=None)
 
 
-        ax.set_title(f"Pendulum Paths across Different Torques with RG-RRT Planner")
+        ax.set_title(f"Car Path with RRT")
         if sys.argv[2] == '0':
             # # get pairs of coordinates and plot the line between them
             for i in range(len(df_1)-1):
@@ -78,7 +78,7 @@ if __name__ == "__main__":
             for i in range(len(df_1)-1):
                 plot_line(ax, [df_1.iat[i, 0], df_1.iat[i+1, 0]], [df_1.iat[i, 1], df_1.iat[i+1, 1]], cmap=df_1.iat[i, 3])
 
-            fig.colorbar(cm.ScalarMappable(norm=Normalize(vmin=-3, vmax=3), cmap=cm.plasma), ax=ax)
+            fig.colorbar(cm.ScalarMappable(norm=Normalize(vmin=-3, vmax=3), cmap=cm.plasma), ax=ax, label="Velocity")
 
             # plot the start and finish
             ax.plot(-8, -5, marker='o', color='green', markersize=4)

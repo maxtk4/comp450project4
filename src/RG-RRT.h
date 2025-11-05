@@ -91,6 +91,8 @@ namespace ompl
 			void setup() override;
 			
 		protected:
+			const std::vector<std::string> names = {"Abeline", "Amy", "Alex", "Alexander", "Beth", "Bill", "Bob", "Cathy", "Claire", "Dan", "Danielle", "Emily", "Edward", "Frank", "Frahanco", "Fred", "Faith", "Gerald", "Gertrude", "Gemma", "Henry", "Hank", "Helena", "Hannah", "Ian", "Isabella", "Jake", "John", "Jerry", "Jean", "Kyle", "Karl", "Kris", "Louise", "Larry", "Max", "May", "Mary", "Nancy", "Neel", "Owen", "Ophelia", "Pat"};
+			
 			class Motion {
 			public:
 				Motion() = default;
@@ -112,8 +114,15 @@ namespace ompl
 				// The parent motion in the exploration tree
 				Motion *parent{nullptr};
 				
+				// Give this Motion a human-readable identifier, such as "Bob"
+				// There's a chance that it shares this idenfitier with other Motions, so you should also check another property
+				std::string name;
+				
 				// Vector of reachable States (represented by State *)
 				std::vector<base::State*> reachable;
+				
+				// Vector of Controls that got us to the reachable States
+				std::vector<Control*> reachableControls;
 			};
 			
 			// Free the memory allocated by this planner
@@ -136,7 +145,7 @@ namespace ompl
 			const SpaceInformation *siC_;
 			
 			// Duration over which that we apply controls for reachibility analysis
-			int reachControlSteps_{5};
+			int reachControlSteps_{3};
 			
 			// Control subspace index for the reachability estimation
 			int reachControlDimIdx_{0};
