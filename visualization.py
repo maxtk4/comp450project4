@@ -13,6 +13,7 @@ from matplotlib.colors import Normalize
 import numpy as np
 import sys
 import math
+import networkx as nx
 
 def plot_rectangle(ax, x, y, h, w):
 
@@ -22,14 +23,14 @@ def plot_rectangle(ax, x, y, h, w):
     
     ax.add_patch(rect)
 
-def plot_line(ax, x_coords, y_coords, alpha=1, cmap=-3):
+def plot_line_cmap(ax, x_coords, y_coords, alpha=1, cmap=-3):
     colors = cm.plasma(np.linspace(0, 1, 600))
 
     ax.plot(x_coords, y_coords, color=colors[int(cmap*100)+300], linestyle='--', marker='', alpha=alpha)
 
-# def plot_line(ax, x_coords, y_coords, color='r'):
+def plot_line(ax, x_coords, y_coords, color='r', alpha=1):
 
-#     return ax.plot(x_coords, y_coords, color=color, linestyle='-', marker='', alpha=0.6)
+    return ax.plot(x_coords, y_coords, color=color, linestyle='-', marker='', alpha=alpha)
            
 
 if __name__ == "__main__":
@@ -48,7 +49,7 @@ if __name__ == "__main__":
         # df_3 = pd.read_csv("./pendulumPathRGRRT_10.txt", delimiter=' ', header=None)
 
 
-        ax.set_title(f"Car Path with RRT")
+        ax.set_title(f"Pendulum Graph Data with RGRRT")
         if sys.argv[2] == '0':
             # # get pairs of coordinates and plot the line between them
             for i in range(len(df_1)-1):
@@ -66,6 +67,14 @@ if __name__ == "__main__":
             ax.plot(math.pi/2, 0, marker='o', color='black', markersize=4)
             ax.text(math.pi/2-0.6, -0.8, 'Qgoal', fontsize=12, color='black')
 
+            graph = nx.read_graphml("./kpiece-pendulum.graphml")
+
+            for edge in graph.edges():
+                node0_coordinates = [float(x) for x in graph.nodes[edge[0]]['coords'].split(',')]
+                node1_coordinates = [float(x) for x in graph.nodes[edge[1]]['coords'].split(',')]
+
+                plot_line(ax, [node0_coordinates[0], node1_coordinates[0]],[node0_coordinates[1], node1_coordinates[1]], color='gray', alpha=0.25)
+
             ax.set_ybound(-6,9)
             ax.set_xbound(-4,4)
 
@@ -76,9 +85,18 @@ if __name__ == "__main__":
         if sys.argv[2] == '1':
             # get pairs of coordinates and plot the line between them
             for i in range(len(df_1)-1):
-                plot_line(ax, [df_1.iat[i, 0], df_1.iat[i+1, 0]], [df_1.iat[i, 1], df_1.iat[i+1, 1]], cmap=df_1.iat[i, 3])
+                plot_line_cmap(ax, [df_1.iat[i, 0], df_1.iat[i+1, 0]], [df_1.iat[i, 1], df_1.iat[i+1, 1]], cmap=df_1.iat[i, 3])
 
             fig.colorbar(cm.ScalarMappable(norm=Normalize(vmin=-3, vmax=3), cmap=cm.plasma), ax=ax, label="Velocity")
+
+            graph = nx.read_graphml("./rrt-car.graphml")
+
+            for edge in graph.edges():
+                node0_coordinates = [float(x) for x in graph.nodes[edge[0]]['coords'].split(',')]
+                node1_coordinates = [float(x) for x in graph.nodes[edge[1]]['coords'].split(',')]
+
+                plot_line(ax, [node0_coordinates[0], node1_coordinates[0]],[node0_coordinates[1], node1_coordinates[1]], color='gray', alpha=0.25)
+
 
             # plot the start and finish
             ax.plot(-8, -5, marker='o', color='green', markersize=4)

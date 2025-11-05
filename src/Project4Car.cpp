@@ -6,6 +6,9 @@
 
 #include <iostream>
 
+// Necessary for printing out graph data to a file for visualization
+#include <fstream>
+
 #include <ompl/base/ProjectionEvaluator.h>
 
 #include <ompl/control/SimpleSetup.h>
@@ -256,8 +259,8 @@ void planCar(oc::SimpleSetupPtr & ss, int choice)
 
 		// dump the entire graph into a graphML file
 		std::ofstream outputFile("rrt-car.graphml");
-		ompl::base::PlannerData data(ss.getSpaceInformation());
-		ss.getPlanner()->getPlannerData(data);
+		ompl::base::PlannerData data(ss->getSpaceInformation());
+		planner->getPlannerData(data);
 		data.printGraphML(outputFile);
 	} else if (choice == 2) {
 		// KPIECE1
@@ -278,8 +281,8 @@ void planCar(oc::SimpleSetupPtr & ss, int choice)
 
 		// dump the entire graph into a graphML file
 		std::ofstream outputFile("kpiece-car.graphml");
-		ompl::base::PlannerData data(ss.getSpaceInformation());
-		ss.getPlanner()->getPlannerData(data);
+		ompl::base::PlannerData data(ss->getSpaceInformation());
+		planner->getPlannerData(data);
 		data.printGraphML(outputFile);
 	} else if (choice == 3) {
 		// RG-RRT
@@ -304,8 +307,8 @@ void planCar(oc::SimpleSetupPtr & ss, int choice)
 
 		// dump the entire graph into a graphML file
 		std::ofstream outputFile("rgrrt-car.graphml");
-		ompl::base::PlannerData data(ss.getSpaceInformation());
-		ss.getPlanner()->getPlannerData(data);
+		ompl::base::PlannerData data(ss->getSpaceInformation());
+		planner->getPlannerData(data);
 		data.printGraphML(outputFile);
 	} else {
 		std::cout << "Invalid choice! Please use 1 (RRT), 2 (KPIECE1), or 3 (RG-RRT)" << std::endl;

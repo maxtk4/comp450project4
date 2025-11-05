@@ -4,6 +4,9 @@
 // Authors: Henry Prendergast and Max Kuhlman
 //////////////////////////////////////
 
+// Necessary for printing out graph data to a file for visualization
+#include <fstream>
+
 #include <iostream>
 
 #include <ompl/base/ProjectionEvaluator.h>
@@ -160,8 +163,8 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 
 		// dump the entire graph into a graphML file
 		std::ofstream outputFile("rrt-pendulum.graphml");
-		ompl::base::PlannerData data(ss.getSpaceInformation());
-		ss.getPlanner()->getPlannerData(data);
+		ompl::base::PlannerData data(ss->getSpaceInformation());
+		planner->getPlannerData(data);
 		data.printGraphML(outputFile);
 	} else if (choice == 2) {
 		// KPIECE1
@@ -182,8 +185,8 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 
 		// dump the entire graph into a graphML file
 		std::ofstream outputFile("kpiece-pendulum.graphml");
-		ompl::base::PlannerData data(ss.getSpaceInformation());
-		ss.getPlanner()->getPlannerData(data);
+		ompl::base::PlannerData data(ss->getSpaceInformation());
+		planner->getPlannerData(data);
 		data.printGraphML(outputFile);
 	} else if (choice == 3) {
 		// RG-RRT
@@ -207,8 +210,8 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 
 		// dump the entire graph into a graphML file
 		std::ofstream outputFile("rgrrt-pendulum.graphml");
-		ompl::base::PlannerData data(ss.getSpaceInformation());
-		ss.getPlanner()->getPlannerData(data);
+		ompl::base::PlannerData data(ss->getSpaceInformation());
+		planner->getPlannerData(data);
 		data.printGraphML(outputFile);
 	} else {
 		std::cout << "Invalid choice! Please use 1 (RRT), 2 (KPIECE1), or 3 (RG-RRT)" << std::endl;
