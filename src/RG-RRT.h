@@ -91,7 +91,7 @@ namespace ompl
 			void setup() override;
 			
 		protected:
-			const std::vector<std::string> names = {"Abeline", "Amy", "Alex", "Alexander", "Beth", "Bill", "Bob", "Cathy", "Claire", "Dan", "Danielle", "Emily", "Edward", "Frank", "Frahanco", "Fred", "Faith", "Gerald", "Gertrude", "Gemma", "Henry", "Hank", "Helena", "Hannah", "Ian", "Isabella", "Jake", "John", "Jerry", "Jean", "Kyle", "Karl", "Kris", "Louise", "Larry", "Max", "May", "Mary", "Nancy", "Neel", "Owen", "Ophelia", "Pat"};
+			const std::vector<std::string> names = {"Abeline", "Amy", "Alex", "Alexander", "Beth", "Bill", "Bob", "Cathy", "Claire", "Dan", "Danielle", "Emily", "Edward", "Frank", "Frahanco", "Fred", "Faith", "Gerald", "Gertrude", "Gemma", "Henry", "Hank", "Helena", "Hannah", "Ian", "Isabella", "Ilina", "Jake", "John", "Jerry", "Jean", "Kyle", "Karl", "Kris", "Kate", "Louise", "Larry", "Max", "May", "Mary", "Nancy", "Neel", "Owen", "Ophelia", "Pat", "Perry", "Quentin", "Quince", "Quemberly", "Richard", "Rei", "Shirley", "Sam", "Sarge", "Tom", "Tau", "Tristan", "Thea", "Uriel", "Valentine", "Veronica", "Vlad", "Willow", "Will", "XAEA-12", "Yvette", "Zeke", "Zach"};
 			
 			class Motion {
 			public:

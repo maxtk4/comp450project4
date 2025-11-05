@@ -80,7 +80,7 @@ ompl::control::SimpleSetupPtr createPendulum(double torque) {
 	auto thetaSpace = std::make_shared<ompl::base::SO2StateSpace>();
 	auto omegaSpace = std::make_shared<ompl::base::RealVectorStateSpace>(1);
 	pendulumSpace->addSubspace(thetaSpace, 1.0);
-	pendulumSpace->addSubspace(omegaSpace, 1.0);
+	pendulumSpace->addSubspace(omegaSpace, 0.25);
 	auto projection = new PendulumProjection(pendulumSpace);
 	pendulumSpace->registerDefaultProjection(ompl::base::ProjectionEvaluatorPtr(projection));
 	//pendulumSpace->lock();

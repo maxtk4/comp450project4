@@ -180,7 +180,7 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
     while (const base::State *st = pis_.nextStart())
     {
         auto *motion = new Motion(siC_);
-		motion->name = names[(int)(rng_.uniform01() * names.size())];
+		motion->name = names[(int)(rng_.uniform01() * names.size())] + std::to_string((int)(rng_.uniform01() * 100));
         si_->copyState(motion->state, st);
         siC_->nullControl(motion->control);
         nn_->add(motion);
@@ -208,7 +208,7 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
     double approxdif = std::numeric_limits<double>::infinity();
 
     auto *rmotion = new Motion(siC_);
-	rmotion->name = names[(int)(rng_.uniform01() * names.size())];
+	rmotion->name = names[(int)(rng_.uniform01() * names.size())] + std::to_string((int)(rng_.uniform01() * 100));
     //base::State *rstate = rmotion->state;
     //Control *rctrl = rmotion->control;
 
@@ -216,13 +216,15 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
     {
         /* sample random state (with goal biasing) */
         if (goal_s && rng_.uniform01() < goalBias_ && goal_s->canSample()) {
-			//std::cout << "Sampling goal" << std::endl;
+			std::cout << "Sampling goal" << std::endl;
 			goal_s->sampleGoal(rmotion->state);
 		}
         else {
-			//std::cout << "Sampling random" << std::endl;
+			std::cout << "Sampling random" << std::endl;
             sampler_->sampleUniform(rmotion->state);
 		}
+		
+		std::cout << "Sampled motion has state angle " << rmotion->state->as<ompl::base::CompoundStateSpace::StateType>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << " and velocity " << rmotion->state->as<ompl::base::CompoundStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[0] << std::endl;
 		
 		// From the actual paper:
 		// More specifically, the NEARESTSTATE(xrand,T) function compares the distance from the random sample not only to the nodes, 
@@ -237,19 +239,19 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 		// nn_ is a NearestNeighbors that was constructed using Motions, so it requires a Motion to calculate distance
         Motion *nmotion = nn_->nearest(rmotion);
 		
-		//std::cout << nmotion->name << " nmotion->state theta is: " << nmotion->state->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << std::endl;
-
-		
 		if (nmotion->reachable.size() > 0) {  // Make sure this isn't a dead end
 
 			auto distNearestSampled = si_->distance(nmotion->state, rmotion->state);
+			
+			std::cout << nmotion->name << " nmotion->state theta is: " << nmotion->state->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << ", velocity: " << nmotion->state->as<ompl::base::CompoundState>()->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[0] << ", distance = " << distNearestSampled << std::endl;
+
 
 			// Check if there is a reachable state which is closer than the nearest neighbor state
 			auto distReachableSampled = -1.0;
 			int nrIdx = -1;
 			for (int r = 0; r < (int)nmotion->reachable.size(); r++) {
-				//std::cout << nmotion->name << " nmotion " << r << "st/nd/rd/th reachable state angle: " << nmotion->reachable[r]->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << ", control: " << nmotion->reachableControls[r]->as<ompl::control::RealVectorControlSpace::ControlType>()->values[0] << std::endl;
 				auto distReachSampled = si_->distance(nmotion->reachable[r], rmotion->state);
+				std::cout << nmotion->name << " nmotion " << r << "st/nd/rd/th reachable state angle: " << nmotion->reachable[r]->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << ", velocity: " << nmotion->reachable[r]->as<ompl::base::CompoundState>()->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[0] << ", control: " << nmotion->reachableControls[r]->as<ompl::control::RealVectorControlSpace::ControlType>()->values[0] << " --> distance = " << distReachSampled << std::endl;
 				if (distReachableSampled == -1.0 || distReachSampled < distReachableSampled) {
 					// This reachable state is closer to the sampled point than the currently-held one
 					distReachableSampled = distReachSampled;
@@ -270,10 +272,12 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 				//rmotion->state = nmotion->reachable[nrIdx];
 				//rmotion->control = nmotion->reachableControls[nrIdx];
 				// ^ Using these lines would make nmotion->reachable[nrIdx] become rmotion->state sometimes. Not sure why
+				std::cout << "Updating rmotion with closer reachable state" << std::endl;
 				si_->copyState(rmotion->state, nmotion->reachable[nrIdx]);
 				siC_->copyControl(rmotion->control, nmotion->reachableControls[nrIdx]);
 			} else {
 				// Otherwise, continue to the next iteration of the loop
+				std::cout << "nmotion " << nmotion->name << " is closer to the sampled point than any reachable points" << std::endl;
 				continue;
 			}
 		} else {
@@ -313,7 +317,7 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 		{
 			// This control creates valid movement for at least a little while; add a motion
 			auto *motion = new Motion(siC_);
-			motion->name = names[(int)(rng_.uniform01() * names.size())];
+			motion->name = names[(int)(rng_.uniform01() * names.size())] + std::to_string((int)(rng_.uniform01() * 100));
 			si_->copyState(motion->state, rmotion->state);
 			siC_->copyControl(motion->control, rmotion->control);
 			motion->steps = cd;
@@ -337,6 +341,7 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 			// We didn't get to the goal, so now we can find some reachable states
 			addReachableStates(motion);
 			//std::cout << "Number of reachable states for new motion: " << motion->reachable.size() << std::endl;
+			std::cout << "Added new motion " << motion->name << " with state angle " << motion->state->as<ompl::base::CompoundStateSpace::StateType>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << ", velocity " << motion->state->as<ompl::base::CompoundStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[0] << std::endl;
 		}
     }
 	
