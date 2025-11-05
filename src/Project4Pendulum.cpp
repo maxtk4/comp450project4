@@ -157,6 +157,12 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 		} else {
 			std::cout << "No solution found" << std::endl;
 		}
+
+		// dump the entire graph into a graphML file
+		std::ofstream outputFile("rrt-pendulum.graphml");
+		ompl::base::PlannerData data(ss.getSpaceInformation());
+		ss.getPlanner()->getPlannerData(data);
+		data.printGraphML(outputFile);
 	} else if (choice == 2) {
 		// KPIECE1
 		auto planner = std::make_shared<ompl::control::KPIECE1>(ss->getSpaceInformation());
@@ -173,6 +179,12 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 		} else {
 			std::cout << "No solution found" << std::endl;
 		}
+
+		// dump the entire graph into a graphML file
+		std::ofstream outputFile("kpiece-pendulum.graphml");
+		ompl::base::PlannerData data(ss.getSpaceInformation());
+		ss.getPlanner()->getPlannerData(data);
+		data.printGraphML(outputFile);
 	} else if (choice == 3) {
 		// RG-RRT
 		auto planner = std::make_shared<ompl::control::RGRRT>(ss->getSpaceInformation());
@@ -192,6 +204,12 @@ void planPendulum(ompl::control::SimpleSetupPtr & ss , int choice) {
 		} else {
 			std::cout << "No solution found" << std::endl;
 		}
+
+		// dump the entire graph into a graphML file
+		std::ofstream outputFile("rgrrt-pendulum.graphml");
+		ompl::base::PlannerData data(ss.getSpaceInformation());
+		ss.getPlanner()->getPlannerData(data);
+		data.printGraphML(outputFile);
 	} else {
 		std::cout << "Invalid choice! Please use 1 (RRT), 2 (KPIECE1), or 3 (RG-RRT)" << std::endl;
 	}
