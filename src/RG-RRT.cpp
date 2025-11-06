@@ -72,11 +72,11 @@ void ompl::control::RGRRT::freeMemory()
             for (auto control : motion->reachableControls)
                 siC_->freeControl(control);
 
+            // Free the motions themselves
             if (motion->state)
                 si_->freeState(motion->state);
             if (motion->control)
                 siC_->freeControl(motion->control);
-			// TOOD: Add something to remove the states and controls in the vectors
             delete motion;
         }
     }
@@ -114,7 +114,8 @@ void ompl::control::RGRRT::getPlannerData(base::PlannerData &data) const
 
 void ompl::control::RGRRT::addReachableStates(Motion *motion)
 {
-	//std::cout << "Adding reachable states to motion " << motion->name << " with state angle: " << motion->state->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << std::endl;
+	// Add reachable states to a given motion
+
     // Here we are assuming that the control space is actually (or is castable to) a RealVectorControlSpace
     ompl::control::RealVectorControlSpace * ctrlSpace = siC_->getControlSpace()->as<ompl::control::RealVectorControlSpace>();  
     
@@ -136,10 +137,9 @@ void ompl::control::RGRRT::addReachableStates(Motion *motion)
         int validSteps = siC_->propagateWhileValid(motion->state, reachControl, reachControlSteps_, result);
         
         if (validSteps > 0) {
-            // if the propagation was successful, add to the nmotion object
+            // if the propagation was successful, add to the motion object's vector of reachable motions
 			motion->reachable.push_back(result);
 			motion->reachableControls.push_back(reachControl);
-            motion->reachableSteps.push_back(validSteps);
 		} else {
 			si_->freeState(result);
 			siC_->freeControl(reachControl);
@@ -153,6 +153,7 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
     base::Goal *goal = pdef_->getGoal().get();
     auto *goal_s = dynamic_cast<base::GoalSampleableRegion *>(goal);
 
+    // add the start states to the dataset and assign reachable points
     while (const base::State *st = pis_.nextStart())
     {
         auto *motion = new Motion(siC_);
@@ -161,9 +162,8 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
         siC_->nullControl(motion->control);
         nn_->add(motion);
 
+        // Assign reachable states for the start points
         addReachableStates(motion);
-		
-		//std::cout << "Number of reachable states for this start: " << motion->reachable.size() << std::endl;
     }
 
     if (nn_->size() == 0)
@@ -172,6 +172,7 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
         return base::PlannerStatus::INVALID_START;
     }
 
+    // Assign random sampler and directed sampler
     if (!sampler_)
         sampler_ = si_->allocStateSampler();
     if (!controlSampler_)
@@ -186,6 +187,7 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
     auto *rmotion = new Motion(siC_);
 	rmotion->name = names[(int)(rng_.uniform01() * names.size())] + std::to_string((int)(rng_.uniform01() * 100));
 
+    // While we are trying to solve the problem, continue looping
     while (ptc == false)
     {
         /* sample random state (with goal biasing) */
@@ -197,10 +199,11 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 		}
 				
 		// nn_ is a NearestNeighbors that was constructed using Motions, so it requires a Motion to calculate distance
+        // This gets the nearest neighbor in the tree to the random motion just generated
         Motion *nmotion = nn_->nearest(rmotion);
-        //unsigned int cd;
 
-		if (nmotion->reachable.size() > 0) {  // Make sure this isn't a dead end
+        // Make sure this motion has reachable nodes
+		if (nmotion->reachable.size() > 0) {
 
 			auto distNearestSampled = distanceFunction(nmotion, rmotion);
 
@@ -221,27 +224,26 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 				// We want to use this reachable point to expand the tree
                 si_->copyState(rmotion->state, nmotion->reachable[nrIdx]);
                 siC_->copyControl(rmotion->control, nmotion->reachableControls[nrIdx]);
-                //cd = nmotion->reachableSteps[nrIdx];
 			} else {
 				// Otherwise, continue to the next iteration of the loop
 				continue;
 			}
 		} else {
-			//std::cout << "The motion didn't have any reachable states" << std::endl;
 			continue;
 		}
 
         // this modifies the state of rmotion
+        // Sample towards the reachable point from the start point
         unsigned int cd = controlSampler_->sampleTo(rmotion->control, nmotion->control, nmotion->state, rmotion->state);
 
-
+        // If we were able to move at all, it was a valid movement so we can add it to the tree
 		if (cd >= siC_->getMinControlDuration())
 		{
 			// This control creates valid movement for at least a little while; add a motion
 			auto *motion = new Motion(siC_);
 			motion->name = names[(int)(rng_.uniform01() * names.size())] + std::to_string((int)(rng_.uniform01() * 100));
 
-            // THIS SECTION DIRECTLY ADDS THE REACHABLE POINT TO THE TREE
+            // Add the point we sampled to to the tree
 			si_->copyState(motion->state, rmotion->state);
 			siC_->copyControl(motion->control, rmotion->control);
 			motion->steps = cd;
@@ -249,6 +251,8 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 
 
 			nn_->add(motion);
+
+            // Check for solution conditions
 			double dist = 0.0;
 			bool solv = goal->isSatisfied(motion->state, &dist);
 			if (solv)

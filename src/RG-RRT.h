@@ -84,7 +84,6 @@ namespace ompl
 				}
 				clear();
 				nn_ = std::make_shared<NN<Motion *>>();
-				rn_ = std::make_shared<NN<Motion *>>(); // TESTING
 				setup();
 			}
 			
@@ -123,9 +122,6 @@ namespace ompl
 				
 				// Vector of Controls that got us to the reachable States
 				std::vector<Control*> reachableControls;
-
-				// Vector of how long each control was applied
-				std::vector<int> reachableSteps;
 			};
 			
 			// Free the memory allocated by this planner
@@ -155,8 +151,6 @@ namespace ompl
 			
 			// A nearest-neighbors datastructure containing the tree of Motions
 			std::shared_ptr<NearestNeighbors<Motion *>> nn_;
-			// A nearest-neighbors datastructure containing the tree of reachable motions
-			std::shared_ptr<NearestNeighbors<Motion *>> rn_; // TESTING
 			
 			// The fraction of the time the goal is picked as the state to expand towards
 			double goalBias_{0.05};
