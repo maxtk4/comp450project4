@@ -14,6 +14,7 @@ import numpy as np
 import sys
 import math
 import networkx as nx
+import re
 
 def plot_rectangle(ax, x, y, h, w):
 
@@ -51,6 +52,23 @@ if __name__ == "__main__":
 
         ax.set_title(f"Pendulum Graph Data with RGRRT")
         if sys.argv[2] == '0':
+            ax.plot(-1*math.pi/2, 0, marker='o', color='black', markersize=4)
+            ax.text(-1*math.pi/2 + 0.2, 0.2, 'Qstart', fontsize=12, color='black')
+
+            ax.plot(math.pi/2, 0, marker='o', color='black', markersize=4)
+            ax.text(math.pi/2-0.6, -0.8, 'Qgoal', fontsize=12, color='black')
+
+            graph = nx.read_graphml("./rgrrt-pendulum.graphml")
+
+            for u, v, data in graph.edges(data=True):
+                node0_coordinates = [float(x) for x in graph.nodes[u]['coords'].split(',')]
+                node1_coordinates = [float(x) for x in graph.nodes[v]['coords'].split(',')]
+
+                
+                cmap = -3+(6/graph.number_of_edges()*int(re.search(r"\d+", data['id']).group(0)))
+
+                plot_line(ax, [node0_coordinates[0], node1_coordinates[0]],[node0_coordinates[1], node1_coordinates[1]], color='gray', alpha=0.2+10/graph.number_of_edges())
+
             # # get pairs of coordinates and plot the line between them
             for i in range(len(df_1)-1):
                 line1, = plot_line(ax, [df_1.iat[i, 0], df_1.iat[i+1, 0]], [df_1.iat[i, 1], df_1.iat[i+1, 1]], color='r')
@@ -61,19 +79,6 @@ if __name__ == "__main__":
             # for i in range(len(df_3)-1):
             #     line3, = plot_line(ax, [df_3.iat[i, 0], df_3.iat[i+1, 0]], [df_3.iat[i, 1], df_3.iat[i+1, 1]], color='b')
 
-            ax.plot(-1*math.pi/2, 0, marker='o', color='black', markersize=4)
-            ax.text(-1*math.pi/2 + 0.2, 0.2, 'Qstart', fontsize=12, color='black')
-
-            ax.plot(math.pi/2, 0, marker='o', color='black', markersize=4)
-            ax.text(math.pi/2-0.6, -0.8, 'Qgoal', fontsize=12, color='black')
-
-            graph = nx.read_graphml("./kpiece-pendulum.graphml")
-
-            for edge in graph.edges():
-                node0_coordinates = [float(x) for x in graph.nodes[edge[0]]['coords'].split(',')]
-                node1_coordinates = [float(x) for x in graph.nodes[edge[1]]['coords'].split(',')]
-
-                plot_line(ax, [node0_coordinates[0], node1_coordinates[0]],[node0_coordinates[1], node1_coordinates[1]], color='gray', alpha=0.25)
 
             ax.set_ybound(-6,9)
             ax.set_xbound(-4,4)
@@ -89,13 +94,16 @@ if __name__ == "__main__":
 
             fig.colorbar(cm.ScalarMappable(norm=Normalize(vmin=-3, vmax=3), cmap=cm.plasma), ax=ax, label="Velocity")
 
-            graph = nx.read_graphml("./rrt-car.graphml")
+            graph = nx.read_graphml("./Graphml Files/rrt-car.graphml")
 
-            for edge in graph.edges():
+
+            for edge, data in graph.edges(data=True):
                 node0_coordinates = [float(x) for x in graph.nodes[edge[0]]['coords'].split(',')]
                 node1_coordinates = [float(x) for x in graph.nodes[edge[1]]['coords'].split(',')]
 
-                plot_line(ax, [node0_coordinates[0], node1_coordinates[0]],[node0_coordinates[1], node1_coordinates[1]], color='gray', alpha=0.25)
+                cmap = -3+(6/graph.number_of_edges()*re.search(r"\d+", data['id']))
+
+                plot_line_cmap(ax, [node0_coordinates[0], node1_coordinates[0]],[node0_coordinates[1], node1_coordinates[1]], cmap='gray', alpha=0.25)
 
 
             # plot the start and finish

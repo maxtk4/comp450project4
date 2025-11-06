@@ -123,6 +123,9 @@ namespace ompl
 				
 				// Vector of Controls that got us to the reachable States
 				std::vector<Control*> reachableControls;
+
+				// Vector of how long each control was applied
+				std::vector<int> reachableSteps;
 			};
 			
 			// Free the memory allocated by this planner

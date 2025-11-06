@@ -66,6 +66,12 @@ void ompl::control::RGRRT::freeMemory()
         nn_->list(motions);
         for (auto &motion : motions)
         {
+            // Free the reachable states in motion
+            for (auto state : motion->reachable)
+                si_->freeState(state);
+            for (auto control : motion->reachableControls)
+                siC_->freeControl(control);
+
             if (motion->state)
                 si_->freeState(motion->state);
             if (motion->control)
@@ -118,34 +124,23 @@ void ompl::control::RGRRT::addReachableStates(Motion *motion)
     
     for (int i = 0; i < 11; i++) {
         double controlValue = controlLow + controlDelta * i;
-        ompl::control::RealVectorControlSpace::ControlType * reachControl = siC_->allocControl()->as<ompl::control::RealVectorControlSpace::ControlType>();  // I'm a little worried about this going out of scope
+        ompl::control::RealVectorControlSpace::ControlType *reachControl = siC_->allocControl()->as<ompl::control::RealVectorControlSpace::ControlType>();
+        // set the control to zero
+        siC_->nullControl(reachControl);
+
         reachControl->values[reachControlDimIdx_] = controlValue;
-        // std::cout << "Control value: " << reachControl->values[reachControlDimIdx_]<< std::endl;
-        // The controlValues are properly spaced out--11 points, including the bounds
         
-        // Options we have in siC_:
-        // propagate(const base::State *state, const Control *control, int steps, std::vector<base::State * > &result, bool alloc)
-        // propagateWhileValid(const base::State *state, const Control *control, int steps, base::State *result)
-        // propagateWhileValid(const base::State *state, const Control *control, int steps, std::vector<base::State * > &result, bool alloc)
-    
         ompl::base::State * result = si_->allocState();
         
         // This should propagate each of the evenly sampled control to add a point to the array of reachable points
-        // What does this do about the velocity of the car?
         int validSteps = siC_->propagateWhileValid(motion->state, reachControl, reachControlSteps_, result);
-		
-		//if (std::fabs(result->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value - 1.5708) < 0.01) {
-		//	std::cout << "\033[31m" << "Result has angle 1.5708" << "\033[0m" << std::endl;
-		//}
         
-        if (validSteps == reachControlSteps_) {
+        if (validSteps > 0) {
             // if the propagation was successful, add to the nmotion object
-			//std::cout << "Checking that added state is accessible" << std::endl;
-			//std::cout << i << "st/nd/rd/th reachable state result theta: " << result->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << std::endl;
-            motion->reachable.push_back(result);
+			motion->reachable.push_back(result);
 			motion->reachableControls.push_back(reachControl);
-			//std::cout << "motion->reachable.back() theta: " << motion->reachable.back()->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << std::endl;
-        } else {
+            motion->reachableSteps.push_back(validSteps);
+		} else {
 			si_->freeState(result);
 			siC_->freeControl(reachControl);
 		}
@@ -190,8 +185,6 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 
     auto *rmotion = new Motion(siC_);
 	rmotion->name = names[(int)(rng_.uniform01() * names.size())] + std::to_string((int)(rng_.uniform01() * 100));
-    //base::State *rstate = rmotion->state;
-    //Control *rctrl = rmotion->control;
 
     while (ptc == false)
     {
@@ -204,35 +197,20 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 			// std::cout << "Sampling random" << std::endl;
             sampler_->sampleUniform(rmotion->state);
 		}
-		
-		// std::cout << "Sampled motion has state angle " << rmotion->state->as<ompl::base::CompoundStateSpace::StateType>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << " and velocity " << rmotion->state->as<ompl::base::CompoundStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[0] << std::endl;
-		
-		// From the actual paper:
-		// More specifically, the NEARESTSTATE(xrand,T) function compares the distance from the random sample not only to the nodes, 
-		// but also to the points within their reachable sets. If the closest Reachable point is closer to the sample than the closest node of the tree, 
-		// then both this reachable point, xrnear, and its corresponding parent node, xnear, are returned. 
-		// Otherwise, if the closest node of the tree is nearer to the sample than any Reachable point, the function returns an empty point pair, 
-		// in which case the RG-RRT throws this sample away, and draws a new sample from the state space and repeats the process.
-
-		//std::cout << "After initial sampling, " << rmotion->name << " rmotion->state theta is: " << rmotion->state->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << std::endl;
-
-
+				
 		// nn_ is a NearestNeighbors that was constructed using Motions, so it requires a Motion to calculate distance
         Motion *nmotion = nn_->nearest(rmotion);
-		
+        unsigned int cd;
+
 		if (nmotion->reachable.size() > 0) {  // Make sure this isn't a dead end
 
 			auto distNearestSampled = si_->distance(nmotion->state, rmotion->state);
-			
-			// std::cout << nmotion->name << " nmotion->state theta is: " << nmotion->state->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << ", velocity: " << nmotion->state->as<ompl::base::CompoundState>()->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[0] << ", distance = " << distNearestSampled << std::endl;
-
 
 			// Check if there is a reachable state which is closer than the nearest neighbor state
 			auto distReachableSampled = -1.0;
 			int nrIdx = -1;
 			for (int r = 0; r < (int)nmotion->reachable.size(); r++) {
 				auto distReachSampled = si_->distance(nmotion->reachable[r], rmotion->state);
-				// std::cout << nmotion->name << " nmotion " << r << "st/nd/rd/th reachable state angle: " << nmotion->reachable[r]->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << ", velocity: " << nmotion->reachable[r]->as<ompl::base::CompoundState>()->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[0] << ", control: " << nmotion->reachableControls[r]->as<ompl::control::RealVectorControlSpace::ControlType>()->values[0] << " --> distance = " << distReachSampled << std::endl;
 				if (distReachableSampled == -1.0 || distReachSampled < distReachableSampled) {
 					// This reachable state is closer to the sampled point than the currently-held one
 					distReachableSampled = distReachSampled;
@@ -243,57 +221,19 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 			// If this motion has no reachable states, we need to catch that (nrIdx is still -1)
 			if (nrIdx != -1 && distReachableSampled < distNearestSampled) {
 				// We want to use this reachable point to expand the tree
-				//std::cout << "Found a good reachable state at index " << nrIdx << std::endl;
-				//std::cout << "rmotion state angle: " << rmotion->state->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << std::endl;
-				//std::cout << "nmotion state angle: " << nmotion->state->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << std::endl;
-				//std::cout << "nmotion reachable size: " << nmotion->reachable.size() << std::endl;
-				//std::cout << "nmotion front reachable state angle: " << nmotion->reachable.front()->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << std::endl;
-				//std::cout << nmotion->name << " nmotion nrIdx reachable state angle: " << nmotion->reachable[nrIdx]->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << std::endl;
-				//std::cout << nmotion->name << " nmotion nrIdx reachable control: " << nmotion->reachableControls[nrIdx]->as<ompl::control::RealVectorControlSpace::ControlType>()->values[0] << std::endl;
-				//rmotion->state = nmotion->reachable[nrIdx];
-				//rmotion->control = nmotion->reachableControls[nrIdx];
-				// ^ Using these lines would make nmotion->reachable[nrIdx] become rmotion->state sometimes. Not sure why
-				// std::cout << "Updating rmotion with closer reachable state" << std::endl;
-				si_->copyState(rmotion->state, nmotion->reachable[nrIdx]);
-				siC_->copyControl(rmotion->control, nmotion->reachableControls[nrIdx]);
+                si_->copyState(rmotion->state, nmotion->reachable[nrIdx]);
+                siC_->copyControl(rmotion->control, nmotion->reachableControls[nrIdx]);
+                cd = nmotion->reachableSteps[nrIdx];
 			} else {
 				// Otherwise, continue to the next iteration of the loop
-				// std::cout << "nmotion " << nmotion->name << " is closer to the sampled point than any reachable points" << std::endl;
 				continue;
 			}
 		} else {
 			//std::cout << "The motion didn't have any reachable states" << std::endl;
 			continue;
 		}
-				
-		//std::cout << "rstate theta before controlSampler_: " << rstate->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << std::endl;
-		//std::cout << rmotion->name << " rmotion->state theta is now: " << rmotion->state->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << std::endl;
-		
-		// Next, according to the paper:
-		// Upon identifying a suitable node for expansion, the RG-RRT extends the tree from the node. 
-		// The SOLVEINPUT(xnear,xrnear,xrand,T) function can either 
-		// search for a consistent action that drives the system from the state towards the sample or 
-		// returns the control associated with the reachable point, xrnear. 
-		// In either case, lines 10 and 11 in Algorithm 1 identify a collision-free trajectory 
-		// to a state within R(xnear) that obeys the system's differential constraints.
-		// Figure 3(b) demonstrates this step where we have extended the node to the point, xnew=xrnear, 
-		// in its reachable set that was the nearest to the sample.
 
-		/* Sample a random control that attempts to go towards the random state, and also sample a control duration */
-		// From the docs: arguments are:
-		// Control * control - Where to store the sampled control
-		// const Control * previous - The previous control; useful for planners with a sense of directivity
-		// const base::State * source - The starting point for this control
-		// base::State * dest - The destination that this control should strive to travel to; modified to match the state reached
-		// NOTE: motion is checked for validity
-		// NOTE: returns the duration that the control should be applied for
-		
-		//unsigned int cd = controlSampler_->sampleTo(rmotion->control, nmotion->control, nmotion->state, rmotion->state);
-		unsigned int cd = reachControlSteps_;
-		// This could probably be changed to use the control that generated the reachable state
-		//std::cout << "rstate theta after controlSampler_: " << rstate->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << std::endl;
-		//std::cout << "rmotion->state theta after controlSampler_: " << rmotion->state->as<ompl::base::CompoundState>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << std::endl;
-		
+
 		if (cd >= siC_->getMinControlDuration())
 		{
 			// This control creates valid movement for at least a little while; add a motion
