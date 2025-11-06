@@ -16,7 +16,6 @@ namespace ompl
 {
     namespace control
     {
-        // TODO: Implement RGRRT as described
 
         class RGRRT : public base::Planner
         {

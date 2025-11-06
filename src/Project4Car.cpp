@@ -63,7 +63,6 @@ public:
 void carODE(const oc::ODESolver::StateType &q, const oc::Control *control,
             oc::ODESolver::StateType &qdot)
 {
-    // TODO: Fill in the ODE for the car's dynamics
 	// Useful https://ompl.kavrakilab.org/odeint.html
 	// ompl::base::State values are translated into an iterable container of real values
 	// q and qdot are vectors, like if you had called ompl::base::ScopedState::reals

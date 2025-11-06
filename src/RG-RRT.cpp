@@ -14,8 +14,6 @@
 #include <ompl/base/spaces/SO2StateSpace.h>
 #include <ompl/base/spaces/RealVectorStateSpace.h>
 
-// TODO: Implement RGRRT as described
-
 // For pendulum:
 // Pick 11 evenly-spaced values for the control torque between the torque limits
 
@@ -94,8 +92,6 @@ void ompl::control::RGRRT::getPlannerData(base::PlannerData &data) const
 
     if (lastGoalMotion_)
         data.addGoalVertex(base::PlannerDataVertex(lastGoalMotion_->state));
-	
-	// TODO: Add some representation of the reachable states that are attached to each motion
 
     for (auto m : motions)
     {
