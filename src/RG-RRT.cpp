@@ -190,21 +190,19 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
     {
         /* sample random state (with goal biasing) */
         if (goal_s && rng_.uniform01() < goalBias_ && goal_s->canSample()) {
-			// std::cout << "Sampling goal" << std::endl;
 			goal_s->sampleGoal(rmotion->state);
 		}
         else {
-			// std::cout << "Sampling random" << std::endl;
             sampler_->sampleUniform(rmotion->state);
 		}
 				
 		// nn_ is a NearestNeighbors that was constructed using Motions, so it requires a Motion to calculate distance
         Motion *nmotion = nn_->nearest(rmotion);
-        unsigned int cd;
+        //unsigned int cd;
 
 		if (nmotion->reachable.size() > 0) {  // Make sure this isn't a dead end
 
-			auto distNearestSampled = si_->distance(nmotion->state, rmotion->state);
+			auto distNearestSampled = distanceFunction(nmotion, rmotion);
 
 			// Check if there is a reachable state which is closer than the nearest neighbor state
 			auto distReachableSampled = -1.0;
@@ -223,7 +221,7 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 				// We want to use this reachable point to expand the tree
                 si_->copyState(rmotion->state, nmotion->reachable[nrIdx]);
                 siC_->copyControl(rmotion->control, nmotion->reachableControls[nrIdx]);
-                cd = nmotion->reachableSteps[nrIdx];
+                //cd = nmotion->reachableSteps[nrIdx];
 			} else {
 				// Otherwise, continue to the next iteration of the loop
 				continue;
@@ -233,16 +231,22 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 			continue;
 		}
 
+        // this modifies the state of rmotion
+        unsigned int cd = controlSampler_->sampleTo(rmotion->control, nmotion->control, nmotion->state, rmotion->state);
+
 
 		if (cd >= siC_->getMinControlDuration())
 		{
 			// This control creates valid movement for at least a little while; add a motion
 			auto *motion = new Motion(siC_);
 			motion->name = names[(int)(rng_.uniform01() * names.size())] + std::to_string((int)(rng_.uniform01() * 100));
+
+            // THIS SECTION DIRECTLY ADDS THE REACHABLE POINT TO THE TREE
 			si_->copyState(motion->state, rmotion->state);
 			siC_->copyControl(motion->control, rmotion->control);
 			motion->steps = cd;
 			motion->parent = nmotion;
+
 
 			nn_->add(motion);
 			double dist = 0.0;
@@ -261,12 +265,8 @@ ompl::base::PlannerStatus ompl::control::RGRRT::solve(const base::PlannerTermina
 			
 			// We didn't get to the goal, so now we can find some reachable states
 			addReachableStates(motion);
-			//std::cout << "Number of reachable states for new motion: " << motion->reachable.size() << std::endl;
-			// std::cout << "Added new motion " << motion->name << " with state angle " << motion->state->as<ompl::base::CompoundStateSpace::StateType>()->as<ompl::base::SO2StateSpace::StateType>(0)->value << ", velocity " << motion->state->as<ompl::base::CompoundStateSpace::StateType>()->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[0] << std::endl;
 		}
     }
-	
-	//std::cout << "Collecting solutions" << std::endl;
 
     bool solved = false;
     bool approximate = false;
