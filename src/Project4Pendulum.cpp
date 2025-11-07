@@ -26,6 +26,7 @@
 
 // Your implementation of RG-RRT
 #include "RG-RRT.h"
+#include "RRT2.h"
 
 // Your projection for the pendulum
 class PendulumProjection : public ompl::base::ProjectionEvaluator {
@@ -223,7 +224,7 @@ void benchmarkPendulum(ompl::control::SimpleSetupPtr & ss) {
 	ompl::tools::Benchmark benchmark = ompl::tools::Benchmark(*ss, "Pendulum");
 	
 	// Create & add a RRT Planner
-	auto rrt = std::make_shared<ompl::control::RRT>(ss->getSpaceInformation());
+	auto rrt = std::make_shared<ompl::control::RRT2>(ss->getSpaceInformation());
 	benchmark.addPlanner(rrt);
 
 	// Create & add a KPIECE Planner

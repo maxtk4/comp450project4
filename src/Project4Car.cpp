@@ -27,6 +27,7 @@
 
 // Your implementation of RG-RRT
 #include "RG-RRT.h"
+#include "RRT2.h"
 
 namespace ob = ompl::base;
 namespace oc = ompl::control;
@@ -239,7 +240,7 @@ void planCar(oc::SimpleSetupPtr & ss, int choice)
 {
 	if (choice == 1) {
 		// RRT
-		auto planner = std::make_shared<oc::RRT>(ss->getSpaceInformation());
+		auto planner = std::make_shared<oc::RRT2>(ss->getSpaceInformation());
 		ss->setPlanner(planner);
 		
 		std::cout << "About to attempt to solve" << std::endl;
